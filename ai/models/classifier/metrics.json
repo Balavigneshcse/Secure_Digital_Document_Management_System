@@ -1,0 +1,1441 @@
+{
+  "base_model": "distilbert-base-multilingual-cased",
+  "labels": [
+    "fir",
+    "police_report",
+    "investigation_record",
+    "witness_statement",
+    "charge_sheet",
+    "court_filing",
+    "evidence_record",
+    "forensic_report",
+    "legal_notice",
+    "judgment",
+    "medical_report",
+    "arrest_warrant",
+    "other"
+  ],
+  "temperature": 0.6692512631416321,
+  "max_len": 256,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 1.5668539190903688,
+      "val_seen": {
+        "n": 390,
+        "accuracy": 0.9435897435897436,
+        "macro_f1": 0.9440581763702581
+      },
+      "elapsed_s": 54
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.4761295967446618,
+      "val_seen": {
+        "n": 390,
+        "accuracy": 0.9769230769230769,
+        "macro_f1": 0.97699581087347
+      },
+      "elapsed_s": 108
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.36279800895488623,
+      "val_seen": {
+        "n": 390,
+        "accuracy": 0.9897435897435898,
+        "macro_f1": 0.9897235983283277
+      },
+      "elapsed_s": 160
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.3234692158954683,
+      "val_seen": {
+        "n": 390,
+        "accuracy": 0.9948717948717949,
+        "macro_f1": 0.9948703699745655
+      },
+      "elapsed_s": 213
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.31012885319973577,
+      "val_seen": {
+        "n": 390,
+        "accuracy": 0.9948717948717949,
+        "macro_f1": 0.9948703699745655
+      },
+      "elapsed_s": 266
+    }
+  ],
+  "trained_on": {
+    "docs": 5148,
+    "excluded_langs": [],
+    "extra": true
+  },
+  "torch": "2.6.0+cu124",
+  "seed": 13,
+  "val_unseen": {
+    "n": 390,
+    "accuracy": 0.8461538461538461,
+    "macro_f1": 0.7952007897333212,
+    "ece_calibrated": 0.11254135118081024,
+    "ece_uncalibrated": 0.056343645315903884,
+    "per_class": {
+      "fir": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 30.0
+      },
+      "police_report": {
+        "precision": 1.0,
+        "recall": 0.03333333333333333,
+        "f1-score": 0.06451612903225806,
+        "support": 30.0
+      },
+      "investigation_record": {
+        "precision": 0.5,
+        "recall": 1.0,
+        "f1-score": 0.6666666666666666,
+        "support": 30.0
+      },
+      "witness_statement": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 30.0
+      },
+      "charge_sheet": {
+        "precision": 1.0,
+        "recall": 0.9666666666666667,
+        "f1-score": 0.9830508474576272,
+        "support": 30.0
+      },
+      "court_filing": {
+        "precision": 0.5555555555555556,
+        "recall": 1.0,
+        "f1-score": 0.7142857142857143,
+        "support": 30.0
+      },
+      "evidence_record": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 30.0
+      },
+      "forensic_report": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 30.0
+      },
+      "legal_notice": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 30.0
+      },
+      "judgment": {
+        "precision": 0.8333333333333334,
+        "recall": 1.0,
+        "f1-score": 0.9090909090909091,
+        "support": 30.0
+      },
+      "medical_report": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 30.0
+      },
+      "arrest_warrant": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 30.0
+      },
+      "other": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 30.0
+      },
+      "accuracy": 0.8461538461538461,
+      "macro avg": {
+        "precision": 0.8376068376068376,
+        "recall": 0.8461538461538461,
+        "f1-score": 0.7952007897333212,
+        "support": 390.0
+      },
+      "weighted avg": {
+        "precision": 0.8376068376068376,
+        "recall": 0.8461538461538461,
+        "f1-score": 0.7952007897333212,
+        "support": 390.0
+      }
+    },
+    "confusion": [
+      [
+        30,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        29,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        24,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        29,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        30
+      ]
+    ]
+  },
+  "val_unseen_noisy": {
+    "n": 390,
+    "accuracy": 0.7128205128205128,
+    "macro_f1": 0.6861732733409956,
+    "ece_calibrated": 0.21787654451834854,
+    "ece_uncalibrated": 0.14286828889296604,
+    "per_class": {
+      "fir": {
+        "precision": 0.90625,
+        "recall": 0.9666666666666667,
+        "f1-score": 0.9354838709677419,
+        "support": 30.0
+      },
+      "police_report": {
+        "precision": 1.0,
+        "recall": 0.06666666666666667,
+        "f1-score": 0.125,
+        "support": 30.0
+      },
+      "investigation_record": {
+        "precision": 0.4,
+        "recall": 0.7333333333333333,
+        "f1-score": 0.5176470588235295,
+        "support": 30.0
+      },
+      "witness_statement": {
+        "precision": 0.7777777777777778,
+        "recall": 0.23333333333333334,
+        "f1-score": 0.358974358974359,
+        "support": 30.0
+      },
+      "charge_sheet": {
+        "precision": 0.8,
+        "recall": 0.6666666666666666,
+        "f1-score": 0.7272727272727273,
+        "support": 30.0
+      },
+      "court_filing": {
+        "precision": 0.6590909090909091,
+        "recall": 0.9666666666666667,
+        "f1-score": 0.7837837837837838,
+        "support": 30.0
+      },
+      "evidence_record": {
+        "precision": 0.6206896551724138,
+        "recall": 0.6,
+        "f1-score": 0.6101694915254238,
+        "support": 30.0
+      },
+      "forensic_report": {
+        "precision": 0.65625,
+        "recall": 0.7,
+        "f1-score": 0.6774193548387096,
+        "support": 30.0
+      },
+      "legal_notice": {
+        "precision": 0.7692307692307693,
+        "recall": 1.0,
+        "f1-score": 0.8695652173913043,
+        "support": 30.0
+      },
+      "judgment": {
+        "precision": 0.6,
+        "recall": 1.0,
+        "f1-score": 0.75,
+        "support": 30.0
+      },
+      "medical_report": {
+        "precision": 1.0,
+        "recall": 0.9333333333333333,
+        "f1-score": 0.9655172413793104,
+        "support": 30.0
+      },
+      "arrest_warrant": {
+        "precision": 0.9565217391304348,
+        "recall": 0.7333333333333333,
+        "f1-score": 0.8301886792452831,
+        "support": 30.0
+      },
+      "other": {
+        "precision": 0.9090909090909091,
+        "recall": 0.6666666666666666,
+        "f1-score": 0.7692307692307693,
+        "support": 30.0
+      },
+      "accuracy": 0.7128205128205128,
+      "macro avg": {
+        "precision": 0.7734539814994779,
+        "recall": 0.7128205128205127,
+        "f1-score": 0.6861732733409956,
+        "support": 390.0
+      },
+      "weighted avg": {
+        "precision": 0.7734539814994779,
+        "recall": 0.7128205128205128,
+        "f1-score": 0.6861732733409954,
+        "support": 390.0
+      }
+    },
+    "confusion": [
+      [
+        29,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        2,
+        25,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        22,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        7,
+        0,
+        14,
+        0,
+        0,
+        0,
+        9,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        3,
+        0,
+        20,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        29,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        18,
+        11,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        4,
+        0,
+        2,
+        0,
+        3,
+        21,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        28,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        7,
+        0,
+        0,
+        22,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        6,
+        0,
+        1,
+        2,
+        0,
+        0,
+        20
+      ]
+    ]
+  },
+  "handwritten": {
+    "n": 29,
+    "accuracy": 0.896551724137931,
+    "macro_f1": 0.8967032967032966,
+    "ece_calibrated": 0.0717181357844122,
+    "ece_uncalibrated": 0.07676326303646479,
+    "per_class": {
+      "fir": {
+        "precision": 1.0,
+        "recall": 0.3333333333333333,
+        "f1-score": 0.5,
+        "support": 3.0
+      },
+      "police_report": {
+        "precision": 0.75,
+        "recall": 1.0,
+        "f1-score": 0.8571428571428571,
+        "support": 3.0
+      },
+      "investigation_record": {
+        "precision": 0.5,
+        "recall": 0.5,
+        "f1-score": 0.5,
+        "support": 2.0
+      },
+      "witness_statement": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 3.0
+      },
+      "charge_sheet": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 2.0
+      },
+      "court_filing": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 2.0
+      },
+      "evidence_record": {
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1-score": 0.8,
+        "support": 2.0
+      },
+      "forensic_report": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 2.0
+      },
+      "legal_notice": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 2.0
+      },
+      "judgment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 2.0
+      },
+      "medical_report": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 2.0
+      },
+      "arrest_warrant": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 2.0
+      },
+      "other": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 2.0
+      },
+      "accuracy": 0.896551724137931,
+      "macro avg": {
+        "precision": 0.9166666666666666,
+        "recall": 0.9102564102564101,
+        "f1-score": 0.8967032967032966,
+        "support": 29.0
+      },
+      "weighted avg": {
+        "precision": 0.9166666666666666,
+        "recall": 0.896551724137931,
+        "f1-score": 0.8852216748768472,
+        "support": 29.0
+      }
+    },
+    "confusion": [
+      [
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2
+      ]
+    ]
+  },
+  "llm_written": {
+    "n": 104,
+    "accuracy": 0.8076923076923077,
+    "macro_f1": 0.8068876071138514,
+    "ece_calibrated": 0.15528234524222526,
+    "ece_uncalibrated": 0.1044087971632297,
+    "per_class": {
+      "fir": {
+        "precision": 0.875,
+        "recall": 0.875,
+        "f1-score": 0.875,
+        "support": 8.0
+      },
+      "police_report": {
+        "precision": 0.6666666666666666,
+        "recall": 0.75,
+        "f1-score": 0.7058823529411765,
+        "support": 8.0
+      },
+      "investigation_record": {
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1-score": 0.8,
+        "support": 8.0
+      },
+      "witness_statement": {
+        "precision": 0.875,
+        "recall": 0.875,
+        "f1-score": 0.875,
+        "support": 8.0
+      },
+      "charge_sheet": {
+        "precision": 0.5555555555555556,
+        "recall": 0.625,
+        "f1-score": 0.5882352941176471,
+        "support": 8.0
+      },
+      "court_filing": {
+        "precision": 0.6153846153846154,
+        "recall": 1.0,
+        "f1-score": 0.7619047619047619,
+        "support": 8.0
+      },
+      "evidence_record": {
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1-score": 0.9333333333333333,
+        "support": 8.0
+      },
+      "forensic_report": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 8.0
+      },
+      "legal_notice": {
+        "precision": 0.8571428571428571,
+        "recall": 0.75,
+        "f1-score": 0.8,
+        "support": 8.0
+      },
+      "judgment": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1-score": 0.6666666666666666,
+        "support": 8.0
+      },
+      "medical_report": {
+        "precision": 1.0,
+        "recall": 0.625,
+        "f1-score": 0.7692307692307693,
+        "support": 8.0
+      },
+      "arrest_warrant": {
+        "precision": 0.8333333333333334,
+        "recall": 0.625,
+        "f1-score": 0.7142857142857143,
+        "support": 8.0
+      },
+      "other": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 8.0
+      },
+      "accuracy": 0.8076923076923077,
+      "macro avg": {
+        "precision": 0.8419038226730534,
+        "recall": 0.8076923076923077,
+        "f1-score": 0.8068876071138514,
+        "support": 104.0
+      },
+      "weighted avg": {
+        "precision": 0.8419038226730534,
+        "recall": 0.8076923076923077,
+        "f1-score": 0.8068876071138514,
+        "support": 104.0
+      }
+    },
+    "confusion": [
+      [
+        7,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        6,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        7,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        2,
+        1,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        7,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        6,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        3,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8
+      ]
+    ]
+  },
+  "data_sha256": "c08cd0f1595523d9d3a8f3cbdab09a38b6acd631a6abb1bc8dac708d510e127e",
+  "hybrid": {
+    "title_bonus": 8.0,
+    "val_unseen": {
+      "n": 390,
+      "accuracy": 0.9923076923076923,
+      "macro_f1": 0.9922605969975451,
+      "review_rate": 0.15128205128205127,
+      "unflagged_error": 0.005128205128205128,
+      "confident_error": 0.002564102564102564
+    },
+    "val_unseen_noisy": {
+      "n": 390,
+      "accuracy": 0.8051282051282052,
+      "macro_f1": 0.8047594992571487,
+      "review_rate": 0.19487179487179487,
+      "unflagged_error": 0.12564102564102564,
+      "confident_error": 0.08717948717948718
+    },
+    "llm_written": {
+      "n": 104,
+      "accuracy": 0.8557692307692307,
+      "macro_f1": 0.8570577083734979,
+      "review_rate": 0.09615384615384616,
+      "unflagged_error": 0.09615384615384616,
+      "confident_error": 0.0673076923076923
+    },
+    "handwritten": {
+      "n": 29,
+      "accuracy": 0.9310344827586207,
+      "macro_f1": 0.9307692307692308,
+      "review_rate": 0.10344827586206896,
+      "unflagged_error": 0.034482758620689655,
+      "confident_error": 0.034482758620689655
+    }
+  },
+  "hybrid_grid": {
+    "0.0": {
+      "val_unseen": {
+        "n": 390,
+        "accuracy": 0.8461538461538461,
+        "macro_f1": 0.7952007897333212,
+        "review_rate": 0.15128205128205127,
+        "unflagged_error": 0.005128205128205128,
+        "confident_error": 0.07179487179487179
+      },
+      "val_unseen_noisy": {
+        "n": 390,
+        "accuracy": 0.7128205128205128,
+        "macro_f1": 0.6861732733409956,
+        "review_rate": 0.2,
+        "unflagged_error": 0.12564102564102564,
+        "confident_error": 0.1717948717948718
+      },
+      "llm_written": {
+        "n": 104,
+        "accuracy": 0.8076923076923077,
+        "macro_f1": 0.8068876071138514,
+        "review_rate": 0.09615384615384616,
+        "unflagged_error": 0.09615384615384616,
+        "confident_error": 0.125
+      },
+      "handwritten": {
+        "n": 29,
+        "accuracy": 0.896551724137931,
+        "macro_f1": 0.8967032967032966,
+        "review_rate": 0.13793103448275862,
+        "unflagged_error": 0.034482758620689655,
+        "confident_error": 0.06896551724137931
+      }
+    },
+    "4.0": {
+      "val_unseen": {
+        "n": 390,
+        "accuracy": 0.9230769230769231,
+        "macro_f1": 0.9053992513958098,
+        "review_rate": 0.15128205128205127,
+        "unflagged_error": 0.005128205128205128,
+        "confident_error": 0.017948717948717947
+      },
+      "val_unseen_noisy": {
+        "n": 390,
+        "accuracy": 0.764102564102564,
+        "macro_f1": 0.7494903399923104,
+        "review_rate": 0.19487179487179487,
+        "unflagged_error": 0.12564102564102564,
+        "confident_error": 0.1358974358974359
+      },
+      "llm_written": {
+        "n": 104,
+        "accuracy": 0.8269230769230769,
+        "macro_f1": 0.8264768400872236,
+        "review_rate": 0.09615384615384616,
+        "unflagged_error": 0.09615384615384616,
+        "confident_error": 0.09615384615384616
+      },
+      "handwritten": {
+        "n": 29,
+        "accuracy": 0.896551724137931,
+        "macro_f1": 0.8967032967032966,
+        "review_rate": 0.10344827586206896,
+        "unflagged_error": 0.034482758620689655,
+        "confident_error": 0.06896551724137931
+      }
+    },
+    "8.0": {
+      "val_unseen": {
+        "n": 390,
+        "accuracy": 0.9923076923076923,
+        "macro_f1": 0.9922605969975451,
+        "review_rate": 0.15128205128205127,
+        "unflagged_error": 0.005128205128205128,
+        "confident_error": 0.002564102564102564
+      },
+      "val_unseen_noisy": {
+        "n": 390,
+        "accuracy": 0.8051282051282052,
+        "macro_f1": 0.8047594992571487,
+        "review_rate": 0.19487179487179487,
+        "unflagged_error": 0.12564102564102564,
+        "confident_error": 0.08717948717948718
+      },
+      "llm_written": {
+        "n": 104,
+        "accuracy": 0.8557692307692307,
+        "macro_f1": 0.8570577083734979,
+        "review_rate": 0.09615384615384616,
+        "unflagged_error": 0.09615384615384616,
+        "confident_error": 0.0673076923076923
+      },
+      "handwritten": {
+        "n": 29,
+        "accuracy": 0.9310344827586207,
+        "macro_f1": 0.9307692307692308,
+        "review_rate": 0.10344827586206896,
+        "unflagged_error": 0.034482758620689655,
+        "confident_error": 0.034482758620689655
+      }
+    },
+    "12.0": {
+      "val_unseen": {
+        "n": 390,
+        "accuracy": 0.9897435897435898,
+        "macro_f1": 0.989695781984828,
+        "review_rate": 0.15128205128205127,
+        "unflagged_error": 0.005128205128205128,
+        "confident_error": 0.005128205128205128
+      },
+      "val_unseen_noisy": {
+        "n": 390,
+        "accuracy": 0.8282051282051283,
+        "macro_f1": 0.8281441713526598,
+        "review_rate": 0.19487179487179487,
+        "unflagged_error": 0.12564102564102564,
+        "confident_error": 0.1076923076923077
+      },
+      "llm_written": {
+        "n": 104,
+        "accuracy": 0.875,
+        "macro_f1": 0.8748128806178342,
+        "review_rate": 0.09615384615384616,
+        "unflagged_error": 0.09615384615384616,
+        "confident_error": 0.0673076923076923
+      },
+      "handwritten": {
+        "n": 29,
+        "accuracy": 0.896551724137931,
+        "macro_f1": 0.8897435897435897,
+        "review_rate": 0.10344827586206896,
+        "unflagged_error": 0.034482758620689655,
+        "confident_error": 0.06896551724137931
+      }
+    }
+  }
+}

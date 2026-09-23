@@ -1,0 +1,15 @@
+{
+  "name": "sdms-anchor-chaincode",
+  "version": "1.0.0",
+  "description": "Append-only integrity anchors (document-version hashes, audit-log heads) for the SDMS ledger",
+  "main": "index.js",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "fabric-chaincode-node server --chaincode-address=$CHAINCODE_SERVER_ADDRESS --chaincode-id=$CHAINCODE_ID",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "fabric-contract-api": "^2.5.8",
+    "fabric-shim": "^2.5.8"
+  }
+}

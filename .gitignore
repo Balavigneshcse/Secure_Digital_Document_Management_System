@@ -1,0 +1,30 @@
+# Python / Node
+.venv/
+.venv-train/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+dist/
+
+# Runtime data written by the app (never commit)
+data/
+!ai/data/            # ...except the AI training / evaluation sets, which are project inputs
+*.log
+
+# Secrets: root .env (docker compose) and backend/.env (native dev) hold keys and passwords
+.env
+!.env.example
+
+# Editor / tool state, not project source
+.claude/
+.idea/
+.vscode/
+
+# Kept locally, not published: pitch deck and non-technical writeups (solution approach, problem statement,
+# a reference archive). The AI service's technical contract lives in ai/AI_CONTRACT.md instead.
+/presentation/
+/docs/
+
+# Fine-tuned classifier weights (ai/models/classifier/model.safetensors, ~0.5 GB) are tracked with Git LFS -
+# see .gitattributes. Not ignored: cloning gets the real weights, no separate training step required.

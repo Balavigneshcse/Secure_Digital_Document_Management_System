@@ -1,0 +1,103 @@
+# Channel definition for the SDMS integrity ledger.
+# Endorsement: an anchor is valid only if BOTH the Police and Court organisations endorse it
+# (channel Endorsement policy = MAJORITY of two orgs), so neither can rewrite history alone.
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: /artifacts/crypto/ordererOrganizations/sdms.local/msp
+    Policies:
+      Readers: {Type: Signature, Rule: "OR('OrdererMSP.member')"}
+      Writers: {Type: Signature, Rule: "OR('OrdererMSP.member')"}
+      Admins:  {Type: Signature, Rule: "OR('OrdererMSP.admin')"}
+    OrdererEndpoints:
+      - orderer.sdms.local:7050
+
+  - &Police
+    Name: PoliceMSP
+    ID: PoliceMSP
+    MSPDir: /artifacts/crypto/peerOrganizations/police.sdms.local/msp
+    Policies:
+      Readers:     {Type: Signature, Rule: "OR('PoliceMSP.admin','PoliceMSP.peer','PoliceMSP.client')"}
+      Writers:     {Type: Signature, Rule: "OR('PoliceMSP.admin','PoliceMSP.client')"}
+      Admins:      {Type: Signature, Rule: "OR('PoliceMSP.admin')"}
+      Endorsement: {Type: Signature, Rule: "OR('PoliceMSP.peer')"}
+    AnchorPeers:
+      - Host: peer0.police.sdms.local
+        Port: 7051
+
+  - &Court
+    Name: CourtMSP
+    ID: CourtMSP
+    MSPDir: /artifacts/crypto/peerOrganizations/court.sdms.local/msp
+    Policies:
+      Readers:     {Type: Signature, Rule: "OR('CourtMSP.admin','CourtMSP.peer','CourtMSP.client')"}
+      Writers:     {Type: Signature, Rule: "OR('CourtMSP.admin','CourtMSP.client')"}
+      Admins:      {Type: Signature, Rule: "OR('CourtMSP.admin')"}
+      Endorsement: {Type: Signature, Rule: "OR('CourtMSP.peer')"}
+    AnchorPeers:
+      - Host: peer0.court.sdms.local
+        Port: 7051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:              {Type: ImplicitMeta, Rule: "ANY Readers"}
+    Writers:              {Type: ImplicitMeta, Rule: "ANY Writers"}
+    Admins:               {Type: ImplicitMeta, Rule: "MAJORITY Admins"}
+    LifecycleEndorsement: {Type: ImplicitMeta, Rule: "MAJORITY Endorsement"}
+    Endorsement:          {Type: ImplicitMeta, Rule: "MAJORITY Endorsement"}
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  Addresses:
+    - orderer.sdms.local:7050
+  BatchTimeout: 500ms          # short: every document upload waits for its anchor to commit
+  BatchSize:
+    MaxMessageCount: 20
+    AbsoluteMaxBytes: 16 MB
+    PreferredMaxBytes: 2 MB
+  OrdererType: etcdraft
+  EtcdRaft:
+    Consenters:
+      - Host: orderer.sdms.local
+        Port: 7050
+        ClientTLSCert: /artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/server.crt
+        ServerTLSCert: /artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/server.crt
+  Organizations:
+  Policies:
+    Readers:         {Type: ImplicitMeta, Rule: "ANY Readers"}
+    Writers:         {Type: ImplicitMeta, Rule: "ANY Writers"}
+    Admins:          {Type: ImplicitMeta, Rule: "MAJORITY Admins"}
+    BlockValidation: {Type: ImplicitMeta, Rule: "ANY Writers"}
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers: {Type: ImplicitMeta, Rule: "ANY Readers"}
+    Writers: {Type: ImplicitMeta, Rule: "ANY Writers"}
+    Admins:  {Type: ImplicitMeta, Rule: "MAJORITY Admins"}
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  SdmsChannel:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations: [*OrdererOrg]
+      Capabilities:
+        <<: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations: [*Police, *Court]
+      Capabilities:
+        <<: *ApplicationCapabilities

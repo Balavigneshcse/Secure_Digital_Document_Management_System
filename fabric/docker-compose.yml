@@ -1,0 +1,144 @@
+# Hyperledger Fabric 2.5 network for the SDMS integrity ledger:
+#   orderer (Raft) + peer0.police + peer0.court + the `anchor` chaincode (as a service) + REST gateway.
+#   docker compose -f fabric/docker-compose.yml up -d --build
+name: sdms-fabric
+
+x-peer-common: &peer-common
+  image: hyperledger/fabric-peer:2.5
+  command: peer node start
+  restart: unless-stopped
+  depends_on:
+    fabric-init:
+      condition: service_completed_successfully
+
+services:
+  fabric-init:
+    image: hyperledger/fabric-tools:2.5
+    command: bash /scripts/init.sh
+    volumes:
+      - fabric-artifacts:/artifacts
+      - ./config:/config:ro
+      - ./scripts:/scripts:ro
+
+  orderer.sdms.local:
+    image: hyperledger/fabric-orderer:2.5
+    command: orderer
+    restart: unless-stopped
+    depends_on:
+      fabric-init:
+        condition: service_completed_successfully
+    environment:
+      FABRIC_LOGGING_SPEC: INFO
+      ORDERER_GENERAL_LISTENADDRESS: 0.0.0.0
+      ORDERER_GENERAL_LISTENPORT: 7050
+      ORDERER_GENERAL_LOCALMSPID: OrdererMSP
+      ORDERER_GENERAL_LOCALMSPDIR: /artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/msp
+      ORDERER_GENERAL_TLS_ENABLED: "true"
+      ORDERER_GENERAL_TLS_PRIVATEKEY: /artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/server.key
+      ORDERER_GENERAL_TLS_CERTIFICATE: /artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/server.crt
+      ORDERER_GENERAL_TLS_ROOTCAS: "[/artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/ca.crt]"
+      ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE: /artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/server.crt
+      ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY: /artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/server.key
+      ORDERER_GENERAL_CLUSTER_ROOTCAS: "[/artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/ca.crt]"
+      ORDERER_GENERAL_BOOTSTRAPMETHOD: none
+      ORDERER_CHANNELPARTICIPATION_ENABLED: "true"
+      ORDERER_ADMIN_TLS_ENABLED: "true"
+      ORDERER_ADMIN_TLS_CERTIFICATE: /artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/server.crt
+      ORDERER_ADMIN_TLS_PRIVATEKEY: /artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/server.key
+      ORDERER_ADMIN_TLS_ROOTCAS: "[/artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/ca.crt]"
+      ORDERER_ADMIN_TLS_CLIENTROOTCAS: "[/artifacts/crypto/ordererOrganizations/sdms.local/orderers/orderer.sdms.local/tls/ca.crt]"
+      ORDERER_ADMIN_LISTENADDRESS: 0.0.0.0:7053
+    volumes:
+      - fabric-artifacts:/artifacts:ro
+      - orderer-data:/var/hyperledger/production/orderer
+
+  peer0.police.sdms.local:
+    <<: *peer-common
+    environment: &peer-env
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_PROFILE_ENABLED: "false"
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_GOSSIP_USELEADERELECTION: "true"
+      CORE_PEER_GOSSIP_ORGLEADER: "false"
+      CORE_CHAINCODE_EXECUTETIMEOUT: 300s
+      CORE_PEER_ID: peer0.police.sdms.local
+      CORE_PEER_ADDRESS: peer0.police.sdms.local:7051
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.court.sdms.local:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.police.sdms.local:7051
+      CORE_PEER_LOCALMSPID: PoliceMSP
+      CORE_PEER_TLS_CERT_FILE: /artifacts/crypto/peerOrganizations/police.sdms.local/peers/peer0.police.sdms.local/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /artifacts/crypto/peerOrganizations/police.sdms.local/peers/peer0.police.sdms.local/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /artifacts/crypto/peerOrganizations/police.sdms.local/peers/peer0.police.sdms.local/tls/ca.crt
+      CORE_PEER_MSPCONFIGPATH: /artifacts/crypto/peerOrganizations/police.sdms.local/peers/peer0.police.sdms.local/msp
+      CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG: '{"peername":"peer0police"}'
+    volumes:
+      - fabric-artifacts:/artifacts:ro
+      - peer-police-data:/var/hyperledger/production
+
+  peer0.court.sdms.local:
+    <<: *peer-common
+    environment:
+      <<: *peer-env
+      CORE_PEER_ID: peer0.court.sdms.local
+      CORE_PEER_ADDRESS: peer0.court.sdms.local:7051
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.police.sdms.local:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.court.sdms.local:7051
+      CORE_PEER_LOCALMSPID: CourtMSP
+      CORE_PEER_TLS_CERT_FILE: /artifacts/crypto/peerOrganizations/court.sdms.local/peers/peer0.court.sdms.local/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /artifacts/crypto/peerOrganizations/court.sdms.local/peers/peer0.court.sdms.local/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /artifacts/crypto/peerOrganizations/court.sdms.local/peers/peer0.court.sdms.local/tls/ca.crt
+      CORE_PEER_MSPCONFIGPATH: /artifacts/crypto/peerOrganizations/court.sdms.local/peers/peer0.court.sdms.local/msp
+      CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG: '{"peername":"peer0court"}'
+    volumes:
+      - fabric-artifacts:/artifacts:ro
+      - peer-court-data:/var/hyperledger/production
+
+  # The chaincode runs as its own service; both peers connect to it (address in the installed package).
+  anchor-cc:
+    build: ./chaincode/anchor
+    restart: unless-stopped
+    depends_on:
+      fabric-init:
+        condition: service_completed_successfully
+    environment:
+      CHAINCODE_SERVER_ADDRESS: 0.0.0.0:9999
+    volumes:
+      - fabric-artifacts:/artifacts:ro
+
+  fabric-bootstrap:
+    image: hyperledger/fabric-tools:2.5
+    command: bash /scripts/bootstrap.sh
+    depends_on:
+      - orderer.sdms.local
+      - peer0.police.sdms.local
+      - peer0.court.sdms.local
+      - anchor-cc
+    volumes:
+      - fabric-artifacts:/artifacts
+      - ./scripts:/scripts:ro
+
+  # REST gateway: the Python backend cannot speak Fabric's gRPC Gateway API directly.
+  ledger-gateway:
+    build: ./gateway
+    restart: unless-stopped
+    depends_on:
+      fabric-bootstrap:
+        condition: service_completed_successfully
+    environment:
+      GATEWAY_KEY: ${SDMS_FABRIC_GATEWAY_KEY:?set SDMS_FABRIC_GATEWAY_KEY (see backend/.env)}
+      PORT: "8088"
+    ports:
+      - "127.0.0.1:8088:8088"
+    volumes:
+      - fabric-artifacts:/artifacts:ro
+
+networks:
+  default:
+    name: sdms_fabric
+
+volumes:
+  fabric-artifacts:
+  orderer-data:
+  peer-police-data:
+  peer-court-data:

@@ -1,0 +1,9 @@
+.venv-train
+data
+training
+__pycache__
+*.pyc
+models/**/checkpoint-*
+# backups and in-progress training runs (models/classifier_r1, models/classifier_r2, ...) must not end up in the image;
+# the service only loads models/classifier
+models/classifier_*

@@ -1,0 +1,110 @@
+# Whole SDMS on one machine, no cloud:
+#   python deploy/gen_env.py            # once: writes .env with fresh random secrets
+#   docker compose up -d --build        # -> https://localhost:8443   (self-signed certificate)
+#
+# Needs Ollama running on the host for summaries (default model "sentinel-legal", see ai/Modelfile).
+name: sdms
+
+include:
+  - path: fabric/docker-compose.yml       # Hyperledger Fabric: orderer, 2 peers, chaincode, REST gateway
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sdms
+      POSTGRES_PASSWORD: ${SDMS_PG_PASSWORD:?run python deploy/gen_env.py}
+      POSTGRES_DB: sdms
+    volumes: [pg-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sdms -d sdms"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    command: ["--wiredTigerCacheSizeGB", "0.5"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: sdms
+      MONGO_INITDB_ROOT_PASSWORD: ${SDMS_MONGO_PASSWORD:?run python deploy/gen_env.py}
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet -u sdms -p \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval 'db.runCommand({ping:1}).ok' | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ai:
+    build: ./ai
+    restart: unless-stopped
+    mem_limit: 3g
+    environment:
+      AI_SERVICE_KEY: ${SDMS_AI_SERVICE_KEY:?run python deploy/gen_env.py}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    ports: ["127.0.0.1:9000:9000"]   # only for running the backend natively (dev); the API key is still required
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:9000/ai/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres: {condition: service_healthy}
+      mongo: {condition: service_healthy}
+      ledger-gateway: {condition: service_started}
+      ai: {condition: service_started}
+    environment:
+      SDMS_DATABASE_URL: postgresql+psycopg://sdms:${SDMS_PG_PASSWORD}@postgres:5432/sdms
+      SDMS_MONGO_URL: mongodb://sdms:${SDMS_MONGO_PASSWORD}@mongo:27017/?authSource=admin
+      SDMS_MONGO_DB: sdms
+      SDMS_MASTER_KEY: ${SDMS_MASTER_KEY:?run python deploy/gen_env.py}
+      SDMS_JWT_SECRET: ${SDMS_JWT_SECRET:?run python deploy/gen_env.py}
+      SDMS_LEDGER_BACKEND: fabric
+      SDMS_FABRIC_GATEWAY_URL: http://ledger-gateway:8088
+      SDMS_FABRIC_GATEWAY_KEY: ${SDMS_FABRIC_GATEWAY_KEY}
+      SDMS_AI_SERVICE_URL: http://ai:9000
+      SDMS_AI_SERVICE_KEY: ${SDMS_AI_SERVICE_KEY}
+      SDMS_CORS_ORIGINS: https://localhost:8443
+      SDMS_TRUSTED_PROXIES: 172.16.0.0/12,10.0.0.0/8,192.168.0.0/16   # nginx, on the private container network
+      SDMS_SEED_DEMO: ${SDMS_SEED_DEMO:-false}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/api/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  tls-init:
+    build: ./backend                 # reuses the backend image: it already ships the cryptography library
+    user: "0:0"                      # a fresh named volume is root-owned; this one-shot job only writes the certificate
+    command: ["python", "-m", "app.selfsigned", "/certs", "localhost", "127.0.0.1"]
+    volumes: [tls-certs:/certs]
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      tls-init: {condition: service_completed_successfully}
+      backend: {condition: service_healthy}
+    ports:
+      - "127.0.0.1:8443:443"
+      - "127.0.0.1:8080:80"
+    volumes: [tls-certs:/certs:ro]
+
+  # Optional antivirus for uploads:  docker compose --profile av up -d clamav
+  # then set SDMS_CLAMAV_HOST=clamav on the backend (see README).
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: [av]
+    restart: unless-stopped
+
+volumes:
+  pg-data:
+  mongo-data:
+  tls-certs:

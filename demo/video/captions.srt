@@ -1,0 +1,38 @@
+1
+00:00:00,300 --> 00:00:11,220
+Officers sign in with a password and a fresh six-digit code from an
+authenticator app on every login. Documents are OCR'd and classified
+by a locally fine-tuned AI model, hashed, and anchored on a private
+Hyperledger Fabric blockchain -- Verify integrity checks the file
+against that anchor.
+
+2
+00:00:11,820 --> 00:00:22,460
+Now an attacker tampers with the stored file directly in the
+database, bypassing the application entirely. Verify integrity
+immediately catches the mismatch -- and download is refused
+outright.
+
+3
+00:00:23,060 --> 00:00:34,620
+Auditors see every action across the system -- including that tamper
+alert -- in a tamper-evident, hash-chained audit log, but never
+document content. Both the audit trail and the Fabric ledger can be
+independently verified end to end, on demand.
+
+4
+00:00:35,220 --> 00:00:39,180
+Rank matters too. A Station Head officer automatically sees every
+case at their own station -- not just the ones personally assigned
+to them.
+
+5
+00:00:39,780 --> 00:00:43,820
+A Superintendent goes further, overseeing multiple stations at once
+-- Central and Northside, both visible here in one list.
+
+6
+00:00:44,420 --> 00:00:52,100
+External reviewers -- forensic labs, judges -- see nothing until a
+specific case is explicitly shared with them, and then only read-
+only: view, download and verify, never upload or edit.

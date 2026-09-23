@@ -1,0 +1,13 @@
+# SentinelDMS AI service (runtime). torch (CPU) is installed separately in the Dockerfile.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.7,<3
+httpx>=0.27
+numpy>=1.26
+pymupdf>=1.24
+pytesseract>=0.3.10
+pillow>=10
+langdetect>=1.0.9
+transformers>=4.44,<5
+sentence-transformers>=3.0,<6

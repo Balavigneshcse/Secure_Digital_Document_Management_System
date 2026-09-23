@@ -1,0 +1,27 @@
+# Identities for the SDMS consortium: one orderer org and two peer orgs (police + judiciary).
+OrdererOrgs:
+  - Name: Orderer
+    Domain: sdms.local
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer
+        SANS: [localhost]
+
+PeerOrgs:
+  - Name: Police
+    Domain: police.sdms.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS: [localhost]
+    Users:
+      Count: 1
+
+  - Name: Court
+    Domain: court.sdms.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS: [localhost]
+    Users:
+      Count: 1
