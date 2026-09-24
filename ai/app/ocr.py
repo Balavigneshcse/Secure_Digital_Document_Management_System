@@ -20,6 +20,7 @@ log = logging.getLogger("sentinel.ocr")
 MAX_PAGES = int(os.getenv("OCR_MAX_PAGES", "60"))
 TIME_BUDGET_S = float(os.getenv("OCR_TIME_BUDGET_S", "150"))
 RENDER_DPI = int(os.getenv("OCR_DPI", "220"))
+MAX_DOCX_XML_BYTES = int(os.getenv("OCR_MAX_DOCX_XML_MB", "20")) * 1024 * 1024  # a ZIP can inflate ~1000:1
 LANG_MAP = {"en": "eng", "hi": "hin", "ta": "tam"}
 DEFAULT_LANG = "eng+hin+tam"
 NEEDS_REVIEW_BELOW = 0.55  # mean word confidence under which a human should look at the extraction
@@ -142,8 +143,11 @@ def _ocr_pdf_bytes(data: bytes) -> dict:
 
 
 def _docx(data: bytes) -> dict:
-    with zipfile.ZipFile(io.BytesIO(data)) as z:
-        xml = z.read("word/document.xml").decode("utf-8", "ignore")
+    with zipfile.ZipFile(io.BytesIO(data)) as z, z.open("word/document.xml") as f:
+        raw = f.read(MAX_DOCX_XML_BYTES + 1)  # bounded: never trust the archive's own size fields
+    if len(raw) > MAX_DOCX_XML_BYTES:
+        raise ValueError("DOCX text is too large once decompressed")
+    xml = raw.decode("utf-8", "ignore")
     text = re.sub(r"<[^>]+>", "", re.sub(r"</w:p>", "\n", xml)).strip()
     return _result(text, [0.99] if text else [], [1] if text else [], detect_language(text) if text else DEFAULT_LANG, "docx_native")
 

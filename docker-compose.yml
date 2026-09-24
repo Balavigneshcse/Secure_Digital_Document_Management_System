@@ -52,17 +52,29 @@ services:
       timeout: 5s
       retries: 30
 
+  # One-shot: creates the least-privilege accounts the backend uses (the admin credentials stay here).
+  db-init:
+    build: ./backend
+    command: ["python", "-m", "app.provision"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      mongo: {condition: service_healthy}
+    environment:
+      SDMS_PROVISION_PG_ADMIN_URL: postgresql://sdms:${SDMS_PG_PASSWORD}@postgres:5432/sdms
+      SDMS_PROVISION_PG_APP_PASSWORD: ${SDMS_PG_APP_PASSWORD:?run python deploy/gen_env.py}
+      SDMS_PROVISION_MONGO_ADMIN_URL: mongodb://sdms:${SDMS_MONGO_PASSWORD}@mongo:27017/?authSource=admin
+      SDMS_PROVISION_MONGO_APP_PASSWORD: ${SDMS_MONGO_APP_PASSWORD:?run python deploy/gen_env.py}
+
   backend:
     build: ./backend
     restart: unless-stopped
     depends_on:
-      postgres: {condition: service_healthy}
-      mongo: {condition: service_healthy}
+      db-init: {condition: service_completed_successfully}
       ledger-gateway: {condition: service_started}
       ai: {condition: service_started}
     environment:
-      SDMS_DATABASE_URL: postgresql+psycopg://sdms:${SDMS_PG_PASSWORD}@postgres:5432/sdms
-      SDMS_MONGO_URL: mongodb://sdms:${SDMS_MONGO_PASSWORD}@mongo:27017/?authSource=admin
+      SDMS_DATABASE_URL: postgresql+psycopg://sdms_app:${SDMS_PG_APP_PASSWORD}@postgres:5432/sdms
+      SDMS_MONGO_URL: mongodb://sdms_app:${SDMS_MONGO_APP_PASSWORD}@mongo:27017/sdms?authSource=sdms
       SDMS_MONGO_DB: sdms
       SDMS_MASTER_KEY: ${SDMS_MASTER_KEY:?run python deploy/gen_env.py}
       SDMS_JWT_SECRET: ${SDMS_JWT_SECRET:?run python deploy/gen_env.py}
@@ -72,7 +84,10 @@ services:
       SDMS_AI_SERVICE_URL: http://ai:9000
       SDMS_AI_SERVICE_KEY: ${SDMS_AI_SERVICE_KEY}
       SDMS_CORS_ORIGINS: https://localhost:8443
-      SDMS_TRUSTED_PROXIES: 172.16.0.0/12,10.0.0.0/8,192.168.0.0/16   # nginx, on the private container network
+      # Only containers can reach the backend, so any private peer is our nginx. nginx replaces X-Forwarded-For with
+      # the address it saw, so the client is exactly 1 hop from the right - LAN (private) addresses included.
+      SDMS_TRUSTED_PROXIES: 172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
+      SDMS_TRUSTED_PROXY_HOPS: "1"
       SDMS_SEED_DEMO: ${SDMS_SEED_DEMO:-false}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/api/health', timeout=4)"]

@@ -18,6 +18,13 @@ TLS_COURT=$C/peerOrganizations/court.sdms.local/peers/peer0.court.sdms.local/tls
 log() { echo "[bootstrap] $*"; }
 die() { echo "[bootstrap] FATAL: $*" >&2; exit 1; }
 
+# The REST gateway runs as the image's unprivileged `node` user (uid 1000); give it just the identity it signs with.
+# Done on every start (before the early exit) so existing networks get it too.
+for org in police court; do
+  U=$C/peerOrganizations/$org.sdms.local/users/User1@$org.sdms.local/msp
+  [ -d "$U" ] && chown -R 1000:1000 "$U"
+done
+
 if [ -f "$A/.bootstrap-done" ]; then log "already bootstrapped"; exit 0; fi
 
 use_org() {  # police | court  -> peer CLI acts as that org's admin against its peer
