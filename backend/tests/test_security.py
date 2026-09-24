@@ -69,12 +69,34 @@ def test_mfa_endpoints_are_throttled_too(make_world):
     ("testclient,10.0.0.0/8", "1.2.3.4, 10.1.1.1", "1.2.3.4"),   # a chain of trusted proxies is skipped
     ("", "1.2.3.4", "testclient"),                               # no trusted proxy: header cannot be spoofed
     ("10.0.0.0/8", "1.2.3.4", "testclient"),                     # peer is not that proxy: header ignored
+    ("testclient", "=cmd|' /C calc'!A0", "testclient"),          # not an address: never recorded
 ])
 def test_client_ip_cannot_be_spoofed(make_world, trusted, xff, expected):
     w = make_world(trusted_proxies=trusted)
     w.client.post("/api/auth/login", headers={"X-Forwarded-For": xff}, json={"username": "ghost", "password": "wrong-password-1"})
     entry = w.audit_actions(actor="ghost")[0]
     assert entry["action"] == "LOGIN_FAILED" and entry["ip"] == expected
+
+
+@pytest.mark.parametrize("xff, expected", [
+    ("192.168.1.50", "192.168.1.50"),            # a LAN client shares the proxies' private range: kept, not skipped
+    ("8.8.8.8, 192.168.1.50", "192.168.1.50"),   # an entry the client wrote further left is never read
+    ("not-an-ip", "testclient"),                 # garbage is never recorded as an address
+])
+def test_proxy_hop_count_attributes_lan_clients_and_ignores_forged_entries(make_world, xff, expected):
+    """The docker-compose setup: nginx on a private network, clients on private networks too."""
+    w = make_world(trusted_proxies="testclient,192.168.0.0/16", trusted_proxy_hops=1)
+    w.client.post("/api/auth/login", headers={"X-Forwarded-For": xff}, json={"username": "ghost", "password": "wrong-password-1"})
+    assert w.audit_actions(actor="ghost")[0]["ip"] == expected
+
+
+def test_change_password_is_rate_limited(make_world):
+    w = make_world(rate_limit_enabled=True, login_attempts_per_minute=3, trusted_proxies="testclient", lockout_threshold=100)
+    h = w.login("officer1")
+    codes = [w.client.post("/api/auth/change-password", headers=h,
+                           json={"current_password": "wrong-guess-123", "new_password": "N3w-Passw0rd-long"}).status_code
+             for _ in range(5)]
+    assert codes == [400] * 3 + [429] * 2
 
 
 def test_uploads_are_throttled_per_user(make_world):

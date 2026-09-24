@@ -270,6 +270,7 @@ Interactive docs at `/docs` only when `SDMS_ENABLE_DOCS=true` (off by default). 
 | `SDMS_ENABLE_DOCS` | `false` | Swagger UI / OpenAPI |
 | `SDMS_CORS_ORIGINS` | `localhost:5173` | Comma-separated allowed origins |
 | `SDMS_TRUSTED_PROXIES` | empty | CIDRs of reverse proxies whose `X-Forwarded-For` is believed. Empty = ignore the header (a client cannot spoof its IP) |
+| `SDMS_TRUSTED_PROXY_HOPS` | 0 | Number of trusted proxies in front of the API. `1` (Docker) = the client is the last `X-Forwarded-For` entry, even on a private LAN address; `0` = skip entries inside `SDMS_TRUSTED_PROXIES` instead |
 | `SDMS_RATE_LIMIT_ENABLED`, `SDMS_LOGIN_ATTEMPTS_PER_MINUTE`, `SDMS_UPLOAD_PER_MINUTE` | `true`, 10, 30 | Rate limits |
 | `SDMS_SESSION_MAX_HOURS`, `SDMS_ACCESS_TOKEN_MINUTES` | 8, 30 | Session lifetime (sliding refresh, hard cap) |
 | `SDMS_CLAMAV_HOST` / `_PORT` / `_REQUIRED` | unset | Scan uploads with ClamAV; `_REQUIRED=true` refuses uploads if the scanner is unreachable |
@@ -283,15 +284,22 @@ cd frontend; npm run build                              # strict TypeScript chec
 cd ai; ..\backend\.venv\Scripts\python -m pytest        # entity + grounding unit tests (pure Python)
 ```
 
-Last full run (2026-09-22, against the round-2 classifier): **122 backend tests passed, 0 skipped** (~2.7 min) with the
-Docker stack's Fabric network and AI service answering, plus 11 AI unit tests and a clean frontend build. Each test builds
+Last full run (2026-09-25, after the security fixes): **130 backend tests passed, 0 skipped** (~6 min) with the Docker
+stack's Fabric network and AI service answering, plus 12 AI unit tests, a clean frontend build and `npm audit` / `pip-audit`
+reporting no known vulnerabilities. Each test builds
 its own throwaway PostgreSQL and MongoDB database. Tests marked `fabric` need the Fabric network and tests marked `ai` need
 the AI service (`SDMS_FABRIC_GATEWAY_*`, `SDMS_AI_SERVICE_*` set); without them they **skip** rather than fail. They cover
 RBAC (rank-based station/multi-station officer access, district-court/high-court judge reach, forensic's shared-and-own-
 uploads-only access, cross-district share rejection), encryption at rest, tamper detection, audit-chain forgery, concurrent
-versioning, multi-store rollback, rate limiting and spoofed `X-Forwarded-For`, session refresh and its cap, the antivirus
+versioning, multi-store rollback, rate limiting and spoofed `X-Forwarded-For` (incl. LAN clients behind nginx), lockout
+without revealing which usernames exist, password-change brute force, DOCX decompression bombs, session refresh and its cap, the antivirus
 path, blind-index and semantic search (incl. case descriptions), and the real Fabric network (including a restart) and real
 AI service (scanned PDF, photo, embeddings).
+
+**Upgrading an existing Docker deployment** to the least-privilege database accounts: run `python deploy/gen_env.py` once
+(it only *adds* `SDMS_PG_APP_PASSWORD` / `SDMS_MONGO_APP_PASSWORD` to your `.env`; existing secrets are never changed), then
+`docker compose up -d --build`. The one-shot `db-init` service creates the accounts and hands the existing tables over;
+the backend no longer receives the database admin passwords at all.
 
 **Upgrading an existing deployment** to the rank/sharing feature, then to the district/court feature: `station_oversight`,
 `case_shares` and `districts` are created automatically on the next backend start, but new *columns* on already-existing
@@ -323,6 +331,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS district_id INTEGER REFERENCES distri
 * **Case sharing (forensic/judge) has no expiry.** An officer or admin must remember to revoke it; nothing auto-expires it.
   Rank changes and share grants aren't rate-limited or capped, so a compromised admin/officer account could over-share.
 * **Rate limiting is per backend process** (in memory). Several replicas would each count separately; put a shared limiter in front.
+* **Client IPs on Docker Desktop** (Windows/macOS): Docker's port forwarding hides the real source address, so every
+  local browser reaches nginx as the Docker network gateway and shares one IP in the audit log and the login rate limit.
+  On a Linux host serving a LAN (publish the port on the LAN interface instead of `127.0.0.1`), nginx sees each client's
+  real address and each client is tracked separately.
 * **TLS uses a self-signed certificate** (browser warning). Mount your organisation's certificate for real use.
 * **Antivirus** is off unless you run ClamAV, and that path has only been tested against a stand-in `clamd`.
 * **Sessions** live in `sessionStorage` (mitigated by a strict CSP, but a script injection would still read them).

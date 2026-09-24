@@ -16,6 +16,7 @@ from .config import Settings
 from .db import Base, advisory_xact_lock, make_engine, make_session_factory
 from .ledger import MemoryLedger
 from .mongo import Mongo
+from .netutil import UnknownUserLockout
 from .routers import audit_api, auth, cases, documents, ledger_api, search, users
 from .models import SystemMeta
 from .seed import seed_demo
@@ -98,6 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.kek = settings.kek()
     app.state.storage = GridFSStorage(mongo.blobs)
     app.state.av = ClamAV(settings.clamav_host, settings.clamav_port) if settings.clamav_host else None
+    app.state.unknown_user_lockout = UnknownUserLockout()
     app.state.ledger = _make_ledger(settings)
     app.state.ai = (
         HttpAI(settings.ai_service_url, settings.ai_service_key, settings.ai_timeout_seconds)

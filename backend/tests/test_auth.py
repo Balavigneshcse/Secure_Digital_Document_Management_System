@@ -65,6 +65,25 @@ def test_account_locks_after_repeated_failures(world):
     assert world.client.post("/api/auth/login", json={"username": "officer2", "password": PASSWORD}).status_code == 200
 
 
+def test_lockout_does_not_reveal_which_usernames_exist(world):
+    def attempts(name):
+        return [world.client.post("/api/auth/login", json={"username": name, "password": "bad-password-1"}).status_code
+                for _ in range(6)]
+
+    assert attempts("officer2") == attempts("no_such_user") == [401] * 5 + [423]
+
+
+def test_wrong_current_password_counts_toward_lockout_and_ends_sessions(world):
+    h = world.h("officer1")  # e.g. a stolen session token, guessing the real password
+    for _ in range(5):
+        r = world.client.post("/api/auth/change-password", headers=h,
+                              json={"current_password": "wrong-guess-123", "new_password": "N3w-Passw0rd-long"})
+        assert r.status_code == 400
+    assert world.client.get("/api/auth/me", headers=h).status_code == 401  # every session signed out
+    assert world.client.post("/api/auth/login", json={"username": "officer1", "password": PASSWORD}).status_code == 423
+    assert "ACCOUNT_LOCKED" in {e["action"] for e in world.audit_actions(actor="officer1")}
+
+
 def test_forced_password_change(world):
     world.add_user("newcomer", "officer", must_change=True)
     h = world.login("newcomer")

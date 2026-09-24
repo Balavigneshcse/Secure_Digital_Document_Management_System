@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import os
 import secrets
 from pathlib import Path
 
@@ -38,6 +39,10 @@ class Settings(BaseSettings):
     login_attempts_per_minute: int = 10  # per client IP (per-account lockout is separate)
     upload_per_minute: int = 30  # per user
     trusted_proxies: str = ""  # comma-separated IPs/CIDRs of reverse proxies whose X-Forwarded-For is believed
+    # How many trusted proxies append to X-Forwarded-For. 0 = walk the header skipping trusted addresses (for when
+    # trusted_proxies lists only proxies); N > 0 = the client is the Nth entry from the right, whatever its address -
+    # needed when clients share the proxies' private ranges (a LAN deployment behind nginx).
+    trusted_proxy_hops: int = 0
     session_max_hours: int = 8  # absolute cap on a login session, however often it is refreshed
 
     # --- optional antivirus (ClamAV clamd). Unset host = scanning off.
@@ -89,6 +94,7 @@ class Settings(BaseSettings):
         self.data_dir.mkdir(parents=True, exist_ok=True)
         raw = secrets.token_bytes(nbytes)
         path.write_text(base64.b64encode(raw).decode())
+        os.chmod(path, 0o600)  # the master key decrypts every document: owner-only
         return raw
 
     def jwt_key(self) -> str:

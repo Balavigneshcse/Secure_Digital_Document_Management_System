@@ -36,20 +36,23 @@ def _fail(db, request: Request, *, action: str, user: User | None, username: str
     raise HTTPException(status, msg)
 
 
-def _register_failure(db, request: Request, user: User, reason: str):
-    """Counts a failed credential attempt, locking the account at the threshold, then raises 401."""
+def _register_failure(db, request: Request, user: User, reason: str, *, action: str = "LOGIN_FAILED", status: int = 401,
+                      msg: str | None = None, revoke_sessions_on_lock: bool = False):
+    """Counts a failed credential attempt, locking the account at the threshold, then raises (401 by default)."""
     s = request.app.state.settings
     user.failed_attempts += 1
     locked = user.failed_attempts >= s.lockout_threshold
     if locked:
         user.locked_until = utcnow_plus(s.lockout_minutes)
         user.failed_attempts = 0
-    audit.append(db, action="LOGIN_FAILED", user=user, outcome="failure", ip=client_ip(request), detail={"reason": reason})
+        if revoke_sessions_on_lock:
+            user.token_version += 1
+    audit.append(db, action=action, user=user, outcome="failure", ip=client_ip(request), detail={"reason": reason})
     if locked:
         audit.append(db, action="ACCOUNT_LOCKED", user=user, outcome="alert", ip=client_ip(request),
-                     detail={"minutes": s.lockout_minutes})
+                     detail={"minutes": s.lockout_minutes, "sessions_revoked": revoke_sessions_on_lock})
     db.commit()
-    raise HTTPException(401, GENERIC_FAIL if reason != "bad_totp" else "Invalid authentication code")
+    raise HTTPException(status, msg or (GENERIC_FAIL if reason != "bad_totp" else "Invalid authentication code"))
 
 
 def _check_not_locked(db, request: Request, user: User):
@@ -84,7 +87,13 @@ def login(body: LoginIn, request: Request, db: DbSession):
     uname = body.username.strip().lower()
     user = db.execute(select(User).where(User.username == uname)).scalar_one_or_none()
     if user is None:
+        # Behave exactly like a real account - same timing, same lockout - so responses don't reveal who exists.
+        phantom = request.app.state.unknown_user_lockout
+        if phantom.locked(uname[:64]):
+            _fail(db, request, action="LOGIN_BLOCKED", user=None, username=uname[:64], status=423,
+                  msg="Account temporarily locked. Try again later.", detail={"reason": "locked_unknown_user"})
         verify_password(body.password, DUMMY_HASH)  # equalise timing with the real-user path
+        phantom.fail(uname[:64], s.lockout_threshold, s.lockout_minutes)
         _fail(db, request, action="LOGIN_FAILED", user=None, username=uname[:64], status=401, msg=GENERIC_FAIL,
               detail={"reason": "unknown_user"})
     _check_not_locked(db, request, user)
@@ -148,9 +157,13 @@ def me(user: User = Depends(access_user_pw)):
 
 @router.post("/change-password", response_model=StageTokenOut)
 def change_password(body: ChangePasswordIn, request: Request, db: DbSession, user: User = Depends(access_user_pw)):
+    _rate_limit(request, db, "password")
+    _check_not_locked(db, request, user)
     if not verify_password(body.current_password, user.password_hash):
-        _fail(db, request, action="PASSWORD_CHANGE_FAILED", user=user, username=None, status=400,
-              msg="Current password is incorrect", detail={})
+        # Someone with a valid session who doesn't know the password may be holding a stolen token: count it like a
+        # failed login, and when that locks the account, sign every session out.
+        _register_failure(db, request, user, "bad_current_password", action="PASSWORD_CHANGE_FAILED", status=400,
+                          msg="Current password is incorrect", revoke_sessions_on_lock=True)
     problem = password_problem(body.new_password, user.username)
     if problem:
         raise HTTPException(400, problem)
@@ -158,6 +171,7 @@ def change_password(body: ChangePasswordIn, request: Request, db: DbSession, use
         raise HTTPException(400, "New password must differ from the current one")
     user.password_hash = hash_password(body.new_password)
     user.must_change_password = False
+    user.failed_attempts = 0
     user.token_version += 1  # signs out every other session
     audit.append(db, action="PASSWORD_CHANGED", user=user, ip=client_ip(request))
     db.commit()

@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import concurrent.futures as cf
 import hashlib
+import io
 import json
+import zipfile
 
 import httpx
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import func, select
 
-from app import docstore
+from app import doc_service, docstore
 from app.ai import AIResult, AIServiceError
 from app.ai.http_client import HttpAI
 from app.doc_service import commit_or_compensate
@@ -152,6 +154,26 @@ def test_upload_validation(world):
 def test_upload_size_limit(world):
     world.app.state.settings.max_upload_mb = 1
     world.upload(world.make_case()["id"], data=b"a" * (1024 * 1024 + 1), name="big.txt", expect=413)
+
+
+def _docx(document_xml: bytes) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml", "<Types/>")
+        z.writestr("word/document.xml", document_xml)
+    return buf.getvalue()
+
+
+def test_docx_decompression_bomb_is_rejected_before_anything_unpacks_it(world, monkeypatch):
+    monkeypatch.setattr(doc_service, "MAX_DOCX_UNCOMPRESSED", 1024 * 1024)
+    cid = world.make_case()["id"]
+    bomb = _docx(b"<w:p>" + b"A" * (2 * 1024 * 1024) + b"</w:p>")  # a few KB on the wire
+    assert len(bomb) < 20_000
+    world.upload(cid, data=bomb, name="evidence.docx", expect=413)
+    world.upload(cid, data=b"PK\x03\x04 but not a zip", name="broken.docx", expect=415)
+    world.upload(cid, data=_docx(b"").replace(b"word/document.xml", b"word/documentXxml"), name="nodoc.docx", expect=415)
+    doc = world.upload(cid, data=_docx(b"<w:p>FIR No. 12/2026 filed at Kotwali</w:p>"), name="fir.docx")
+    assert doc["versions"][0]["filename"] == "fir.docx"
 
 
 # ---- tamper detection --------------------------------------------------------------------------

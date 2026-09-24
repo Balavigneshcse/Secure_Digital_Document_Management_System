@@ -2,15 +2,16 @@
 
 Behind a reverse proxy (nginx) the TCP peer is always the proxy, so without care every user shares one IP: the audit log
 loses meaning and one user's failed logins would lock everyone out of a per-IP limiter. `X-Forwarded-For` is honoured only
-when the direct peer is a configured trusted proxy, and it is read right-to-left, skipping trusted hops, so a client
-cannot spoof its address by sending its own header.
+when the direct peer is a configured trusted proxy. It is read from the right - either a fixed number of proxy hops
+(`trusted_proxy_hops`, for a known topology such as nginx in front of a LAN) or skipping trusted addresses - so a client
+cannot spoof its address by sending its own header. Anything that isn't a valid IP address is never recorded.
 """
 from __future__ import annotations
 
 import ipaddress
 import threading
 import time
-from collections import defaultdict, deque
+from collections import OrderedDict, defaultdict, deque
 
 from fastapi import HTTPException, Request
 
@@ -27,17 +28,35 @@ def _trusted(host: str, trusted: list[str]) -> bool:
     return False
 
 
+def _is_ip(value: str) -> bool:
+    if len(value) > 64:  # the audit log's ip column; an IPv6 scope id could otherwise make it arbitrarily long
+        return False
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
 def resolve_ip(request: Request) -> str | None:
     if not request.client:
         return None
     peer = request.client.host
-    trusted = request.app.state.settings.trusted_proxy_list
+    settings = request.app.state.settings
+    trusted = settings.trusted_proxy_list
     xff = request.headers.get("x-forwarded-for")
     if not trusted or not xff or not _trusted(peer, trusted):
         return peer
-    for hop in reversed([h.strip() for h in xff.split(",") if h.strip()]):
+    hops = [h.strip() for h in xff.split(",") if h.strip()]
+    n = settings.trusted_proxy_hops
+    if n > 0:
+        # Each of our n proxies appended exactly one entry, so the client is n from the right. Anything further left
+        # was written by the client; a chain shorter than n means a proxy was bypassed - trust neither.
+        client = hops[-n] if len(hops) >= n else None
+        return client if client and _is_ip(client) else peer
+    for hop in reversed(hops):
         if not _trusted(hop, trusted):
-            return hop[:64]
+            return hop if _is_ip(hop) else peer
     return peer
 
 
@@ -67,6 +86,31 @@ class SlidingWindow:
 
 
 limiter = SlidingWindow()
+
+
+class UnknownUserLockout:
+    """Mirrors the per-account lockout for usernames that don't exist. Without it a real account answers 423 after
+    repeated failures while a made-up one keeps answering 401 - which tells an attacker which usernames are real."""
+
+    def __init__(self, max_entries: int = 10_000):
+        self._state: OrderedDict[str, list] = OrderedDict()  # name -> [failures, locked until (monotonic)]
+        self._lock = threading.Lock()
+        self._max = max_entries
+
+    def locked(self, name: str) -> bool:
+        with self._lock:
+            entry = self._state.get(name)
+            return bool(entry and entry[1] > time.monotonic())
+
+    def fail(self, name: str, threshold: int, minutes: int) -> None:
+        with self._lock:
+            entry = self._state.pop(name, None) or [0, 0.0]
+            entry[0] += 1
+            if entry[0] >= threshold:  # same rule as the real account: lock, reset the count
+                entry[0], entry[1] = 0, time.monotonic() + minutes * 60
+            self._state[name] = entry
+            while len(self._state) > self._max:
+                self._state.popitem(last=False)
 
 
 class RateLimited(HTTPException):

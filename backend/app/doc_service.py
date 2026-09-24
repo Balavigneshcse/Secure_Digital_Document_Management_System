@@ -6,8 +6,10 @@ Fabric ledger. They can't share a transaction, so `store_version` cleans up afte
 from __future__ import annotations
 
 import hashlib
+import io
 import os
 import re
+import zipfile
 
 from cryptography.exceptions import InvalidTag
 from fastapi import HTTPException, UploadFile
@@ -32,7 +34,22 @@ ALLOWED: dict[str, tuple[str, tuple[bytes, ...] | None]] = {
     ".docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", (b"PK\x03\x04",)),
 }
 MAX_OCR_CHARS = 500_000
+MAX_DOCX_UNCOMPRESSED = 100 * 1024 * 1024  # a ZIP can inflate ~1000:1; real DOCX files are near their upload size
+MAX_DOCX_ENTRIES = 5000
 _TYPE_ALIASES = {"chargesheet": "charge_sheet"}
+
+
+def _check_docx(data: bytes) -> None:
+    """Rejects non-DOCX archives and decompression bombs before anything (the AI service) unpacks them."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            infos = z.infolist()
+    except (zipfile.BadZipFile, ValueError, OSError):
+        raise HTTPException(415, "File content does not match its extension")
+    if len(infos) > MAX_DOCX_ENTRIES or not any(i.filename == "word/document.xml" for i in infos):
+        raise HTTPException(415, "File content does not match its extension")
+    if sum(i.file_size for i in infos) > MAX_DOCX_UNCOMPRESSED:
+        raise HTTPException(413, "Document is too large once decompressed")
 
 
 def safe_filename(name: str) -> str:
@@ -53,6 +70,8 @@ def validate_upload(filename: str, data: bytes) -> tuple[str, str]:
         raise HTTPException(415, "File content does not match its extension")
     if ctype == "text/plain" and b"\x00" in data:
         raise HTTPException(415, "File content does not match its extension")
+    if ext == ".docx":
+        _check_docx(data)
     return name, ctype
 
 
