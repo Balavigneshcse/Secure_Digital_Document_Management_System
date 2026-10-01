@@ -125,7 +125,7 @@ def test_concurrent_version_uploads_get_distinct_numbers(world):
     h = world.h("officer1")
 
     def up(i):
-        return world.client.post(f"/api/documents/{doc['id']}/versions", headers=h,
+        return world.client.post(f"/api/documents/{doc['id']}/versions", headers=h, data={"change_note": f"revision {i}"},
                                  files={"file": (f"v{i}.txt", f"revision {i}".encode(), "text/plain")}).status_code
 
     with cf.ThreadPoolExecutor(6) as ex:
@@ -229,7 +229,7 @@ def test_ledger_record_edit_is_caught(world):
 def test_ciphertext_swapped_between_versions_is_detected(world):
     doc = world.upload(world.make_case()["id"])
     world.client.post(f"/api/documents/{doc['id']}/versions", headers=world.h("officer1"),
-                      files={"file": ("v2.txt", b"second version", "text/plain")})
+                      data={"change_note": "second version"}, files={"file": ("v2.txt", b"second version", "text/plain")})
     s = world.app.state.storage
     k1, k2 = _version(world, doc["id"], 1).storage_key, _version(world, doc["id"], 2).storage_key
     s.put(k1, s.get(k2))  # attacker copies v2's blob over v1

@@ -19,7 +19,7 @@ export default function Login() {
   const { busy, error, run, clear } = useAction();
 
   if (user) {
-    return <Navigate to={user.must_change_password ? "/change-password" : user.role === "auditor" ? "/audit" : "/cases"} replace />;
+    return <Navigate to={user.must_change_password ? "/change-password" : "/"} replace />;
   }
 
   async function onCreds(e: FormEvent) {

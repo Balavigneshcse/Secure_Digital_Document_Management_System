@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     totp_issuer: str = "SDMS"
 
     max_upload_mb: int = 25
+    max_media_upload_mb: int = 200  # audio/video evidence (CCTV clips, recorded statements)
 
     # --- abuse protection
     rate_limit_enabled: bool = True

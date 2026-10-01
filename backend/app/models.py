@@ -7,14 +7,21 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base, utcnow
 
-ROLES = ("officer", "admin", "auditor", "forensic", "judge")
+ROLES = ("officer", "admin", "auditor", "forensic", "judge", "prosecutor", "defence")
 # Meaningful only for role="officer" or role="judge"; ignored (stored as "officer") for every other role.
 #   officer:  "officer" (default, assigned cases only) < "station_head" (+ every case at their own station)
 #             < "superintendent" (+ every case at every station in `station_oversight`)
 #   judge:    "officer" (default: old-style per-case share only, no automatic court reach)
 #             < "district_court" (every case at every station in their own district)
 #             < "high_court" (every case, every district)
-RANKS = ("officer", "station_head", "superintendent", "district_court", "high_court")
+#   admin:    "officer" (default: a station's admin) < "system" (no station: manages accounts of every role)
+RANKS = ("officer", "station_head", "superintendent", "district_court", "high_court", "system")
+
+# Where a case stands. `status` stays the coarse open/closed switch (closed = a verdict froze the record).
+CASE_STAGES = ("under_investigation", "charge_sheeted", "in_trial", "judgment_delivered")
+# Documents that a plain officer files and the station head must approve before the court side can see them.
+APPROVAL_TYPES = ("fir", "charge_sheet")
+APPROVAL_STATES = ("not_required", "pending", "approved", "returned")
 
 DOC_TYPES = (
     "fir",
@@ -109,6 +116,7 @@ class Case(Base):
     case_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="open")
+    stage: Mapped[str] = mapped_column(String(24), default="under_investigation")  # see CASE_STAGES
     station_id: Mapped[int] = mapped_column(ForeignKey("stations.id"))
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[str] = mapped_column(String(32), default=utcnow)
@@ -140,7 +148,8 @@ class CaseAssignment(Base):
 
 
 class CaseShare(Base):
-    """Grants one forensic/judge account read-only content access to one case (no expiry yet - see README)."""
+    """Grants one forensic / judge / prosecutor / defence account access to one case, optionally until `expires_at`
+    (after which it counts for nothing - see permissions.share_active)."""
 
     __tablename__ = "case_shares"
     __table_args__ = (UniqueConstraint("case_id", "shared_with_id"),)
@@ -149,6 +158,7 @@ class CaseShare(Base):
     shared_with_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     shared_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[str] = mapped_column(String(32), default=utcnow)
+    expires_at: Mapped[str | None] = mapped_column(String(32), nullable=True)  # None = until revoked
 
     shared_with: Mapped[User] = relationship(foreign_keys=[shared_with_id])
     granter: Mapped[User] = relationship(foreign_keys=[shared_by])
@@ -166,8 +176,16 @@ class Document(Base):
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[str] = mapped_column(String(32), default=utcnow)
     current_version: Mapped[int] = mapped_column(Integer, default=1)
+    # Station-head approval (see APPROVAL_TYPES). "pending"/"returned" documents are invisible to the court side.
+    approval_status: Mapped[str] = mapped_column(String(16), default="not_required")
+    approved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)  # who decided (approve or return)
+    approved_at: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    approval_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    approved_version: Mapped[int | None] = mapped_column(Integer, nullable=True)  # the version that was approved
 
     case: Mapped[Case] = relationship()
+    creator: Mapped[User] = relationship(foreign_keys=[created_by])
+    approver: Mapped[User | None] = relationship(foreign_keys=[approved_by])
     versions: Mapped[list[DocumentVersion]] = relationship(
         order_by="DocumentVersion.version_no", cascade="all, delete-orphan"
     )
@@ -199,6 +217,65 @@ class DocumentVersion(Base):
     ai_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     uploader: Mapped[User] = relationship(foreign_keys=[uploaded_by])
+
+
+class SigningKey(Base):
+    """A user's Ed25519 signing key pair. The private key is sealed with the master key (server-held - this is not a
+    personal smart card or Aadhaar eSign); the public key is also anchored on the ledger when it is created, so
+    swapping it in this table later is detectable."""
+
+    __tablename__ = "signing_keys"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    public_key: Mapped[str] = mapped_column(String(64))  # base64 of the 32 raw bytes
+    private_key_enc: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[str] = mapped_column(String(32), default=utcnow)
+    ledger_tx_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class Signature(Base):
+    """One person's signature over one document version: Ed25519 over `statement` (canonical JSON naming the
+    document, version, its SHA-256, the signer and the time)."""
+
+    __tablename__ = "signatures"
+    __table_args__ = (UniqueConstraint("document_id", "version_no", "signer_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id"), index=True)
+    version_no: Mapped[int] = mapped_column(Integer)
+    signer_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    signed_at: Mapped[str] = mapped_column(String(32))
+    statement: Mapped[str] = mapped_column(Text)
+    signature: Mapped[str] = mapped_column(String(128))  # base64
+    public_key: Mapped[str] = mapped_column(String(64))  # the signer's key at signing time
+
+    signer: Mapped[User] = relationship(foreign_keys=[signer_id])
+
+
+class AlertRead(Base):
+    """How far each user has read their alerts (the id of the newest audit entry they have seen)."""
+
+    __tablename__ = "alert_reads"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    last_seen_audit_id: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class EditRecord(Base):
+    """What an edit changed (old and new values), for the people allowed to see the case. That it happened, when and
+    by whom lives in the hash-chained audit log, whose entry carries `record_hash` - so altering or deleting a row
+    here is detectable (app/edits.py). The values stay out of the audit log because auditors may not read case data."""
+
+    __tablename__ = "edit_history"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("cases.id"), index=True)
+    document_id: Mapped[int | None] = mapped_column(ForeignKey("documents.id"), nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(String(16))  # case | document | version | approval
+    edited_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    edited_at: Mapped[str] = mapped_column(String(32))
+    reason: Mapped[str] = mapped_column(String(500))
+    changes: Mapped[str] = mapped_column(Text)  # canonical JSON: [{"field", "old", "new"}, ...]
+    record_hash: Mapped[str] = mapped_column(String(64))
+    audit_id: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True)
+
+    editor: Mapped[User] = relationship(foreign_keys=[edited_by])
 
 
 class AuditLog(Base):

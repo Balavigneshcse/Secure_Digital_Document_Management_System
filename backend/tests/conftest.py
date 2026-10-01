@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from pymongo import MongoClient
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ProgrammingError
 
 from app import security
 from app.config import Settings
@@ -45,6 +46,21 @@ def base_settings() -> Settings:
     return Settings()
 
 
+def _drop_database(admin, name: str, attempts: int = 20) -> None:
+    """DROP ... WITH (FORCE) ends the database's other sessions - but on PostgreSQL 18 a non-superuser may not end an
+    autovacuum worker that happens to be visiting the brand-new database at that moment. That is transient: wait for
+    the worker to finish and try again instead of failing an otherwise passed test in teardown."""
+    for i in range(attempts):
+        try:
+            with admin.connect() as c:
+                c.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
+            return
+        except ProgrammingError as exc:
+            if "permission denied to terminate process" not in str(exc) or i == attempts - 1:
+                raise
+            time.sleep(0.5)
+
+
 @pytest.fixture
 def settings_factory(base_settings, tmp_path):
     """Builds Settings pointing at a brand-new PostgreSQL database + MongoDB database, dropped afterwards."""
@@ -72,8 +88,7 @@ def settings_factory(base_settings, tmp_path):
 
     mongo = MongoClient(base_settings.mongo_url, serverSelectionTimeoutMS=5000)
     for pg_name, mongo_name in made:
-        with admin.connect() as c:
-            c.execute(text(f'DROP DATABASE IF EXISTS "{pg_name}" WITH (FORCE)'))
+        _drop_database(admin, pg_name)
         mongo.drop_database(mongo_name)
     mongo.close()
     admin.dispose()
