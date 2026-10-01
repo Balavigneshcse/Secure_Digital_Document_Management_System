@@ -1,0 +1,25 @@
+CASE 06 - Domestic violence complaint
+======================================================================
+
+LOGIN AS: officer2.demo   (password Demo@Pass1234 + QR code in ../qr-codes/)
+Station : Central Police Station (Demo)
+
+--------------------------------------------------------------------
+FORM FIELDS FOR "+ New case"  (copy-paste each line into its field)
+--------------------------------------------------------------------
+Title       : Domestic violence complaint
+FIR number  : 0310/2026
+Type        : domestic violence
+Description : The complainant reported repeated physical assault and threats by her husband over several months and sought a protection order along with the criminal complaint.
+
+Parties (click "+ Add party" once per row below):
+  - Name: Revathi Chandran   |  Role: complainant
+  - Name: Chandran Iyer   |  Role: accused
+
+--------------------------------------------------------------------
+DOCUMENTS TO UPLOAD (in this folder, upload in this order)
+--------------------------------------------------------------------
+  1. 1_FIR.txt  ->  should classify as: fir
+  2. 2_legal_notice.txt  ->  should classify as: legal_notice
+
+Leave "Document type" on Auto-detect (AI) each time, so the judges see the AI classify it live.

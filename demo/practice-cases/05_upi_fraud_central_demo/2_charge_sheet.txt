@@ -1,0 +1,26 @@
+FINAL REPORT / CHARGE SHEET
+Under Section 193 BNSS (formerly Section 173 CrPC)
+
+Case: FIR No. 0288/2026, Central Police Station (Demo)
+Date of filing: 29/09/2026
+
+1. Name of the Investigating Officer: Insp. Officer One (Demo)
+
+2. Brief facts of the case:
+Investigation established that the four unauthorised UPI transactions were routed to a mule bank account opened
+in Demo City using fabricated documents. Call detail records traced the calling number to a SIM card obtained on a
+forged identity. Bank statements of the mule account show the funds were withdrawn through ATMs within two hours
+of the fraud.
+
+3. Evidence collected:
+- Complainant's bank statement showing the four unauthorised debits.
+- Call detail records for the calling number, for the period 18/09/2026.
+- Mule account opening documents obtained from the bank under Section 94 BNSS.
+- CCTV footage of the ATM withdrawals.
+
+4. Sections of law: Section 318(4) BNS, Section 66C and 66D of the Information Technology Act, 2000
+
+5. Opinion: Sufficient evidence exists to place the case for trial. Investigation into the identity of the
+individual who opened the mule account is continuing.
+
+Submitted by: Insp. Officer One (Demo), Central Police Station (Demo)

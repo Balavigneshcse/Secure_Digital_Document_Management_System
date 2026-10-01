@@ -1,0 +1,24 @@
+CASE 05 - UPI phishing fraud
+======================================================================
+
+LOGIN AS: officer.demo   (password Demo@Pass1234 + QR code in ../qr-codes/)
+Station : Central Police Station (Demo)
+
+--------------------------------------------------------------------
+FORM FIELDS FOR "+ New case"  (copy-paste each line into its field)
+--------------------------------------------------------------------
+Title       : UPI phishing fraud
+FIR number  : 0288/2026
+Type        : cyber fraud
+Description : The complainant received a call from a person posing as a bank official and, after sharing a one-time code, lost Rs. 68,000 from his savings account through unauthorised UPI transfers.
+
+Parties (click "+ Add party" once per row below):
+  - Name: Anitha Prakash   |  Role: complainant
+
+--------------------------------------------------------------------
+DOCUMENTS TO UPLOAD (in this folder, upload in this order)
+--------------------------------------------------------------------
+  1. 1_FIR.txt  ->  should classify as: fir
+  2. 2_charge_sheet.txt  ->  should classify as: charge_sheet
+
+Leave "Document type" on Auto-detect (AI) each time, so the judges see the AI classify it live.
