@@ -8,7 +8,7 @@ from .. import audit, docstore
 from ..ai import AIServiceError
 from ..deps import DbSession, client_ip, require_role
 from ..models import Case, CaseParty, Document, DocumentVersion, User
-from ..permissions import content_scope
+from ..permissions import SHARE_ROLES, content_scope, document_scope
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 DATE = r"^\d{4}-\d{2}-\d{2}$"
@@ -49,7 +49,7 @@ def search(
     semantic: bool = Query(False, description="Rank by meaning (embeddings) instead of matching words"),
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    user: User = Depends(require_role("officer", "admin", "forensic", "judge")),
+    user: User = Depends(require_role("officer", "admin", *SHARE_ROLES)),
 ):
     """Officers, and forensic/judge accounts on cases shared with them, search cases and documents (incl.
     OCR'd content) within their content scope. Station admins search case metadata only; document
@@ -99,7 +99,7 @@ def search(
             )
             .join(Case, Case.id == Document.case_id)
             .join(DocumentVersion, (DocumentVersion.document_id == Document.id) & (DocumentVersion.version_no == Document.current_version))
-            .where(content_scope(user))
+            .where(content_scope(user), document_scope(user))  # e.g. a forensic lab: its own documents only
         )
         if case_number:
             dq = dq.where(_ilike(Case.case_number, case_number))

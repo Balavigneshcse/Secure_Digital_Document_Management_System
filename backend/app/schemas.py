@@ -55,13 +55,18 @@ class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9._-]+$")
     full_name: str = Field(min_length=1, max_length=120)
     password: str = Field(max_length=256)
-    role: Literal["officer"] = "officer"
+    # A station admin creates plain officers of their own station only; the rest is for a system administrator.
+    role: Literal["officer", "admin", "auditor", "forensic", "judge", "prosecutor", "defence"] = "officer"
+    rank: str = Field(default="officer", max_length=16)
+    station_id: int | None = None
+    district_id: int | None = None
 
 
 class UserPatch(BaseModel):
     is_active: bool
-    rank: Literal["officer", "station_head"] = "officer"  # a station admin may promote/demote within their own
-    # station only; "superintendent" (multi-station) and every judge rank are granted only via the operator CLI
+    # A station admin may promote/demote within their own station only (officer/station_head); a system
+    # administrator may set any rank valid for the account's role. Checked in routers/users.py.
+    rank: str = Field(default="officer", max_length=16)
 
 
 # --- cases --------------------------------------------------------------------------------------
@@ -79,12 +84,29 @@ class CaseCreate(BaseModel):
     officer_ids: list[int] = Field(default_factory=list, max_length=20)  # admin-created cases only
 
 
+class CaseEdit(BaseModel):
+    """Only the fields sent are changed. `reason` is mandatory: every edit to a case record says why."""
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    fir_number: str | None = Field(default=None, max_length=64)
+    case_type: str | None = Field(default=None, max_length=64)
+    description: str | None = Field(default=None, max_length=4000)
+    parties: list[PartyIn] | None = Field(default=None, max_length=50)
+    # "judgment_delivered" is set only by recording a verdict
+    stage: Literal["under_investigation", "charge_sheeted", "in_trial"] | None = None
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class ReasonIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
 class AssignIn(BaseModel):
     user_id: int
 
 
 class ShareIn(BaseModel):
-    user_id: int  # must be an active user with role "forensic" or "judge"
+    user_id: int  # must be an active forensic / judge / prosecutor / defence account
+    days: int | None = Field(default=None, ge=1, le=365)  # access ends after this many days; None = until revoked
 
 
 class ShareOut(BaseModel):
@@ -94,6 +116,8 @@ class ShareOut(BaseModel):
     role: str
     shared_by: str
     created_at: str
+    expires_at: str | None = None
+    expired: bool = False
 
 
 class PartyOut(BaseModel):
@@ -115,12 +139,61 @@ class CaseOut(BaseModel):
     case_type: str | None
     description: str | None
     status: str
+    stage: str = "under_investigation"
     station_id: int
+    station_name: str | None = None
     created_at: str
     parties: list[PartyOut] = []
     assignees: list[AssigneeOut] = []
     shares: list[ShareOut] = []  # forensic/judge accounts granted read-only access; visible to officer and admin
     document_count: int | None = None  # None when the viewer has no content rights
+    can_edit: bool = False  # the viewer may change the case details (open case; officer with access, or station admin)
+    can_reopen: bool = False  # closed case, and the viewer is a judge whose court has jurisdiction
+
+
+# --- edit history -------------------------------------------------------------------------------
+class ChangeOut(BaseModel):
+    field: str
+    old: str | None
+    new: str | None
+
+
+class EditOut(BaseModel):
+    id: int  # audit-log entry id
+    ts: str  # server time (UTC) from the audit log
+    kind: Literal["case", "document", "version", "approval"]
+    editor: str | None
+    editor_name: str | None
+    editor_role: str | None
+    document_id: int | None
+    document_title: str | None
+    version_no: int | None
+    reason: str | None
+    changes: list[ChangeOut] = []
+    verified: bool  # the record still matches the hash written to the audit chain
+    problem: str | None = None
+
+
+class DocumentEdit(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=4000)
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class DiffLine(BaseModel):
+    op: Literal["+", "-", " ", "@"]
+    text: str
+
+
+class DiffOut(BaseModel):
+    from_version: int
+    to_version: int
+    available: bool
+    note: str | None = None
+    added: int = 0
+    removed: int = 0
+    truncated: bool = False
+    lines: list[DiffLine] = []
 
 
 # --- documents ----------------------------------------------------------------------------------
@@ -156,6 +229,14 @@ class DocumentOut(BaseModel):
     doc_type: str
     description: str | None
     created_at: str
+    created_by: str | None = None
+    created_by_role: str | None = None  # a document is edited only by the department that filed it
+    case_status: str = "open"
+    approval_status: str = "not_required"
+    approval_by: str | None = None
+    approval_at: str | None = None
+    approval_note: str | None = None
+    approved_version: int | None = None
     current_version: int
     versions: list[VersionOut] = []
 

@@ -1,0 +1,25 @@
+CASE 01 - Shop burglary, Mill Road, Karur
+======================================================================
+
+LOGIN AS: officer.krr1.demo   (password Demo@Pass1234 + QR code in ../qr-codes/)
+Station : Karur Town Police Station
+
+--------------------------------------------------------------------
+FORM FIELDS FOR "+ New case"  (copy-paste each line into its field)
+--------------------------------------------------------------------
+Title       : Shop burglary, Mill Road, Karur
+FIR number  : 0701/2026
+Type        : burglary
+Description : Unknown persons broke the rear shutter lock of a provision store on Mill Road, Karur on the night of 12/09/2026 and removed cash and grocery items.
+
+Parties (click "+ Add party" once per row below):
+  - Name: Selvam Raja   |  Role: complainant
+  - Name: Muthukumar S   |  Role: witness
+
+--------------------------------------------------------------------
+DOCUMENTS TO UPLOAD (in this folder, upload in this order)
+--------------------------------------------------------------------
+  1. 1_FIR.txt  ->  should classify as: fir
+  2. 2_witness_statement.txt  ->  should classify as: witness_statement
+
+Leave "Document type" on Auto-detect (AI) each time, so the judges see the AI classify it live.

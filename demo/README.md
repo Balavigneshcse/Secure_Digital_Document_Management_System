@@ -2,6 +2,15 @@
 
 Everything needed to give a live demo of SDMS without digging through the main README.
 
+- **`video/sdms_full_flow_verdict_1080p.mp4`** and **`video/sdms_full_flow_verdict_1080p_subtitled.mp4`** — the latest
+  walkthrough (1920x1080, ~3.5 min, silent, real human-speed typing and pauses) of the new chain-snatching case in
+  `video-case/`: officer registers the case, files FIR + witness statement and shares with forensic → forensic sees no
+  documents, files its own report, is blocked from the FIR → officer sees everything → district judge sees the whole
+  case and **records the verdict** (case closes) → the stored FIR is tampered → Verify integrity fails → auditor sees
+  `TAMPER_DETECTED` and re-checks independently. The two files are identical except for burned-in captions;
+  `video/captions_verdict_flow.srt` is the caption text. The auditor section was recorded separately (same case,
+  same day) and joined at the auditor sign-in page.
+- **`video-case/`** — the case data and files for that video, plus a step-by-step script to record it yourself.
 - **`video/sdms_full_flow_1080p.mp4`** — the main walkthrough (1920x1080, ~3 minutes, real human-speed pacing, no
   speed-ups): officer registers a case and files the FIR → forensic lab uploads its own report and is blocked from
   the officer's document → officer sees both documents, judge sees the whole case automatically → tampering is
@@ -88,10 +97,33 @@ Open **https://localhost:8443** — accept the self-signed-certificate warning o
    **Integrity ledger → Verify full chain** confirm the logs and the Fabric chain themselves are still intact.
 5. **Log in as `sho.demo`** (Station Head) → **Cases** shows *every* Central Station case, not just one officer's —
    the rank-based access story.
-6. **Log in as `forensic.demo`** → **Cases** shows exactly one case (shared with it), read-only: no upload button, no
-   "Add version". Log in as `forensic2.demo` to show it sees a *different* case — sharing is per-account, per-case.
+6. **Log in as `forensic.demo`** → **Cases** shows exactly one case (shared with it); it can file its own report but never
+   sees the officers' documents. Log in as `forensic2.demo` to show it sees a *different* case — sharing is per-account,
+   per-case.
 
 Full account list, every case, and the complete permissions matrix are in the spreadsheet.
+
+## Newer features worth showing (each takes a minute)
+
+Every sign-in now lands on a **dashboard**: cases by stage, what is waiting for you, shares about to expire, and alerts.
+
+| Show | How |
+|---|---|
+| **Station-head approval** | `officer.demo` files an FIR in a CPS case → it shows *Awaiting station head's approval*, and a judge it is shared with cannot see it. `sho.demo` sees it on the dashboard → opens it → **Approve** (or **Return for correction** with a note). Now the judge sees it. (Only CPS has a station-head account, so Karur/Chennai FIRs need no approval.) |
+| **Edit with history** | On any open case: **Edit case details**, or on a document **Edit text** / **Upload corrected file** — a reason is required. The **Edit history** card shows date, time, who, old → new, reason; **Show changes from v1** shows the lines that changed. |
+| **Case stages** | **Edit case details → Stage**: under investigation → charge-sheeted (needs a charge sheet on file) → in trial. The verdict sets *judgment delivered* and closes the case. |
+| **Reopen** | As `judge.krr.demo` on a closed Karur case: **Reopen this case** with a reason. |
+| **Time-limited sharing** | Case page → **Shared with** → pick an account and *for 7 days*. The chip shows the end date; after it, access stops by itself. |
+| **Viewer** | Any document → **View**: text, PDF, images and audio/video play in the page (try `video-case/4_CCTV_kovai_road_cam2.mp4`). |
+| **Digital signature** | Document → **Sign this version** → your password. Shows *valid*, the signer, time and key fingerprint. |
+| **Chain of custody** | Bottom of a document page (officer/judge/prosecutor): every filing, view, download, verification, signature and refused attempt. |
+| **Section 63 certificate** | Document → **Section 63 certificate** → **Print / save as PDF**. Refused for a tampered file. |
+| **Alerts** | After the tamper demo, the officer, the district judge and the auditor each see a red **TAMPERING DETECTED** alert and a count on the 🔔. |
+| **Prosecutor / defence** | Share a case with `prosecutor.krr.demo` / `defence.krr.demo`. The defence sees only the FIR until the case is charge-sheeted, and never the case diary. |
+| **Forgotten password** | `sysadmin.demo` → **Users** → **Reset password**: a one-time password shown once; the user must change it and still needs their authenticator. |
+
+`prosecutor.krr.demo`, `defence.krr.demo` and `sysadmin.demo` (password `Demo@Pass1234`) were added after the QR codes
+were made: at first sign-in they show their own QR code to scan, then ask for a new password.
 
 ## Notes
 

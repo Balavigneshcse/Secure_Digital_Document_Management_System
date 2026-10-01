@@ -13,13 +13,14 @@ from sqlalchemy import select
 
 from . import audit
 from .config import Settings
-from .db import Base, make_engine, make_session_factory
+from .db import Base, ensure_columns, make_engine, make_session_factory
 from .models import ROLES, StationOversight, User
 from .seed import create_user, get_or_create_district, get_or_create_station
-from .security import password_problem
+from .security import hash_password, password_problem
 
 OFFICER_RANKS = ("officer", "station_head", "superintendent")
 JUDGE_RANKS = ("officer", "district_court", "high_court")  # "officer" here = no automatic court-wide reach
+ADMIN_RANKS = ("officer", "system")  # "system" = system administrator: no station, manages every kind of account
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,15 +37,16 @@ def main(argv: list[str] | None = None) -> int:
     u.add_argument("--username", required=True)
     u.add_argument("--full-name", required=True)
     u.add_argument("--role", required=True, choices=list(ROLES))
-    u.add_argument("--rank", default="officer", choices=sorted(set(OFFICER_RANKS) | set(JUDGE_RANKS)),
-                   help="officer: officer|station_head|superintendent. judge: officer|district_court|high_court")
-    u.add_argument("--station-code", help="required for admin, and for officer unless --rank superintendent")
+    u.add_argument("--rank", default="officer", choices=sorted(set(OFFICER_RANKS) | set(JUDGE_RANKS) | set(ADMIN_RANKS)),
+                   help="officer: officer|station_head|superintendent. judge: officer|district_court|high_court. admin: officer|system")
+    u.add_argument("--station-code", help="required for a station admin, and for officer unless --rank superintendent")
     u.add_argument("--district-code", help="forensic (its lab's district) or judge --rank district_court (required)")
     o = sub.add_parser("oversee", help="grant a rank=superintendent officer content access to an extra station")
     o.add_argument("--username", required=True)
     o.add_argument("--station-code", required=True)
     for name, help_ in (("reset-mfa", "clear a user's authenticator so they enrol a new one at next sign-in (lost phone)"),
-                        ("unlock", "clear a lockout after failed sign-ins")):
+                        ("unlock", "clear a lockout after failed sign-ins"),
+                        ("reset-password", "set a temporary password (read like create-user's) that must be changed at next sign-in")):
         r = sub.add_parser(name, help=help_)
         r.add_argument("--username", required=True)
     args = p.parse_args(argv)
@@ -52,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     settings = Settings()
     engine = make_engine(settings.database_url)
     Base.metadata.create_all(engine)
+    ensure_columns(engine)
     with make_session_factory(engine)() as db:
         if args.cmd == "create-district":
             get_or_create_district(db, args.code.upper(), args.name)
@@ -84,6 +87,25 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{args.username} now oversees {station.code}.")
             return 0
 
+        if args.cmd == "reset-password":
+            target = db.execute(select(User).where(User.username == args.username)).scalar_one_or_none()
+            if target is None:
+                print(f"No such user: {args.username}", file=sys.stderr)
+                return 1
+            password = getpass.getpass("Temporary password: ") if sys.stdin.isatty() else sys.stdin.readline().rstrip("\r\n")
+            problem = password_problem(password, args.username)
+            if problem:
+                print(problem, file=sys.stderr)
+                return 2
+            target.password_hash = hash_password(password)
+            target.must_change_password, target.failed_attempts, target.locked_until = True, 0, None
+            target.token_version += 1
+            audit.append(db, action="PASSWORD_RESET", actor_username="cli", resource_type="user", resource_id=target.id,
+                         detail={"username": target.username, "via": "cli"})
+            db.commit()
+            print(f"{args.username}: temporary password set; it must be changed at next sign-in.")
+            return 0
+
         if args.cmd in ("reset-mfa", "unlock"):
             # Break-glass for accounts no station admin can manage (auditors, admins). Whoever can run this already
             # has database access, so it is written to the audit chain rather than pretending to authenticate.
@@ -107,8 +129,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.role == "judge" and args.rank not in JUDGE_RANKS:
             print(f"--rank {args.rank} is an officer rank; --role judge takes {JUDGE_RANKS}", file=sys.stderr)
             return 2
-        if args.rank != "officer" and args.role not in ("officer", "judge"):
-            print("--rank only applies to --role officer or --role judge", file=sys.stderr)
+        if args.role == "admin" and args.rank not in ADMIN_RANKS:
+            print(f"--role admin takes --rank {ADMIN_RANKS}", file=sys.stderr)
+            return 2
+        if args.rank != "officer" and args.role not in ("officer", "judge", "admin"):
+            print("--rank only applies to --role officer, judge or admin", file=sys.stderr)
             return 2
         if args.role == "judge" and args.rank == "district_court" and not args.district_code:
             print("--district-code is required for --role judge --rank district_court", file=sys.stderr)
@@ -117,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
             print("--district-code is required for --role forensic (each forensic lab belongs to one district)", file=sys.stderr)
             return 2
 
-        station_needed = args.role == "admin" or (args.role == "officer" and args.rank != "superintendent")
+        station_needed = (args.role == "admin" and args.rank != "system") or (args.role == "officer" and args.rank != "superintendent")
         station = None
         if station_needed:
             if not args.station_code:

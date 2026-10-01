@@ -7,37 +7,46 @@ from sqlalchemy import func, select
 
 from pydantic import BaseModel
 
-from .. import audit, docstore
+from .. import audit, docstore, edits
 from ..ai import AIServiceError
-from ..db import advisory_xact_lock
+from ..db import advisory_xact_lock, utcnow, utcnow_plus
 from ..deps import DbSession, client_ip, require_role
 from ..models import Case, CaseAssignment, CaseParty, CaseShare, Document, Station, User
-from ..permissions import can_read_content, content_scope, load_case
-from ..schemas import AssignIn, CaseCreate, CaseOut, ShareIn
+from ..permissions import (
+    SHARE_ROLES, can_edit_case, can_read_content, can_read_document, content_scope, in_district_court, load_case,
+)
+from ..schemas import AssignIn, CaseCreate, CaseEdit, CaseOut, EditOut, ReasonIn, ShareIn
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 CaseUser = Depends(require_role("officer", "admin"))  # create a case
-CaseViewer = Depends(require_role("officer", "admin", "forensic", "judge"))  # list / view a case
+CaseViewer = Depends(require_role("officer", "admin", *SHARE_ROLES))  # list / view a case
 
 
 def case_out(db, user: User, case: Case) -> CaseOut:
     doc_count = None
     if can_read_content(db, user, case):
-        doc_count = db.scalar(select(func.count(Document.id)).where(Document.case_id == case.id))
+        if user.role == "officer":
+            doc_count = db.scalar(select(func.count(Document.id)).where(Document.case_id == case.id))
+        else:  # only what this viewer may actually open
+            docs = db.execute(select(Document).where(Document.case_id == case.id)).scalars()
+            doc_count = sum(1 for d in docs if can_read_document(db, user, case, d))
+    now = utcnow()
     return CaseOut(
         id=case.id, case_number=case.case_number, fir_number=case.fir_number, title=case.title,
-        case_type=case.case_type, description=case.description, status=case.status,
-        station_id=case.station_id, created_at=case.created_at,
+        case_type=case.case_type, description=case.description, status=case.status, stage=case.stage,
+        station_id=case.station_id, station_name=case.station.name if case.station else None, created_at=case.created_at,
         parties=[{"name": p.name, "role": p.role} for p in case.parties],
         assignees=[
             {"user_id": a.user_id, "username": a.user.username, "full_name": a.user.full_name} for a in case.assignments
         ],
         shares=[
             {"user_id": s.shared_with_id, "username": s.shared_with.username, "full_name": s.shared_with.full_name,
-             "role": s.shared_with.role, "shared_by": s.granter.username, "created_at": s.created_at}
+             "role": s.shared_with.role, "shared_by": s.granter.username, "created_at": s.created_at,
+             "expires_at": s.expires_at, "expired": bool(s.expires_at and s.expires_at <= now)}
             for s in case.shares
         ],
-        document_count=doc_count,
+        document_count=doc_count, can_edit=can_edit_case(db, user, case),
+        can_reopen=case.status == "closed" and user.role == "judge" and in_district_court(db, user, case),
     )
 
 
@@ -49,10 +58,10 @@ def _station_officer(db, admin: User, user_id: int) -> User:
 
 
 def _reviewer(db, user_id: int) -> User:
-    """A forensic/judge account, valid as a share target regardless of who is granting the share."""
+    """A forensic/judge/prosecutor/defence account, valid as a share target regardless of who grants the share."""
     u = db.get(User, user_id)
-    if u is None or u.role not in ("forensic", "judge") or not u.is_active:
-        raise HTTPException(400, f"User {user_id} is not an active forensic or judge account")
+    if u is None or u.role not in SHARE_ROLES or not u.is_active:
+        raise HTTPException(400, f"User {user_id} is not an active forensic, judge, prosecutor or defence account")
     return u
 
 
@@ -99,6 +108,83 @@ def get_case(case_id: int, request: Request, db: DbSession, user: User = CaseVie
                  case_number=case.case_number, ip=client_ip(request))
     db.commit()
     return case_out(db, user, case)
+
+
+def _parties_text(parties) -> str | None:
+    return "; ".join(f"{p.name.strip()} ({p.role})" for p in parties) or None
+
+
+@router.patch("/{case_id}", response_model=CaseOut)
+def edit_case(case_id: int, body: CaseEdit, request: Request, db: DbSession, user: User = CaseUser):
+    """Changes case details. Nothing is lost: the old and new value of every changed field, the editor, the reason
+    and the server time go into the edit history that everyone with access to the case - judges included - can read."""
+    case = load_case(db, request, user, case_id, content=(user.role == "officer"))
+    if case.status != "open":
+        raise HTTPException(409, "This case is closed; its record can no longer be edited")
+    sent = body.model_fields_set
+    changes = []
+    for field, label in (("title", "Title"), ("fir_number", "FIR number"), ("case_type", "Case type"), ("description", "Description")):
+        if field not in sent:
+            continue
+        new = (getattr(body, field) or "").strip() or None
+        if field == "title" and new is None:
+            raise HTTPException(422, "Title cannot be empty")
+        old = getattr(case, field)
+        if new != old:
+            changes.append(edits.change(label, old, new))
+            setattr(case, field, new)
+    if "parties" in sent and body.parties is not None:
+        old, new = _parties_text(case.parties), _parties_text(body.parties)
+        if old != new:
+            changes.append(edits.change("Parties", old, new))
+            case.parties = [CaseParty(name=p.name.strip(), role=p.role) for p in body.parties]
+    if "stage" in sent and body.stage and body.stage != case.stage:
+        if body.stage != "under_investigation" and not db.execute(
+            select(Document.id).where(Document.case_id == case.id, Document.doc_type == "charge_sheet",
+                                      Document.approval_status.notin_(("pending", "returned"))).limit(1)).first():
+            raise HTTPException(409, "File the charge sheet (and have it approved) before moving the case past investigation")
+        changes.append(edits.change("Stage", case.stage, body.stage))
+        case.stage = body.stage
+    if not changes:
+        raise HTTPException(400, "Nothing was changed")
+    db.flush()
+    edits.record(db, action="CASE_EDITED", user=user, case=case, document=None, reason=body.reason, changes=changes,
+                 ip=client_ip(request))
+    db.commit()
+    return case_out(db, user, case)
+
+
+@router.post("/{case_id}/reopen", response_model=CaseOut)
+def reopen_case(case_id: int, body: ReasonIn, request: Request, db: DbSession, user: User = Depends(require_role("judge"))):
+    """A judge whose court has jurisdiction reopens a closed case (review, appeal, fresh evidence). The earlier
+    judgment stays on file untouched; the case can be added to again and a further verdict recorded. The reopening,
+    with its reason, is part of the edit history."""
+    case = load_case(db, request, user, case_id, content=True)
+    if not in_district_court(db, user, case):
+        raise HTTPException(403, "Only the judge of the court that has jurisdiction over this case can reopen it")
+    if case.status != "closed":
+        raise HTTPException(409, "This case is not closed")
+    changes = [edits.change("Status", "closed", "open"), edits.change("Stage", case.stage, "in_trial")]
+    case.status, case.stage = "open", "in_trial"
+    db.flush()
+    edits.record(db, action="CASE_EDITED", user=user, case=case, document=None, reason=body.reason, changes=changes,
+                 ip=client_ip(request), detail={"reopened": True})
+    db.commit()
+    return case_out(db, user, case)
+
+
+@router.get("/{case_id}/history", response_model=list[EditOut])
+def case_history(case_id: int, request: Request, db: DbSession, user: User = CaseViewer):
+    """Every recorded edit to this case and to those of its documents the viewer may read, newest first."""
+    case = load_case(db, request, user, case_id, content=False)
+    if user.role == "admin":
+        doc_ids: set[int] | None = set()  # admins never see documents, so not their edits either
+    elif user.role == "officer":
+        doc_ids = None
+    else:  # only the documents this viewer may open
+        docs = db.execute(select(Document).where(Document.case_id == case.id)).scalars()
+        doc_ids = {d.id for d in docs if can_read_document(db, user, case, d)}
+    return edits.history(db, case, document_ids=doc_ids)
 
 
 class CaseSummaryOut(BaseModel):
@@ -163,7 +249,7 @@ def unassign(case_id: int, user_id: int, request: Request, db: DbSession, admin:
     return case_out(db, admin, case)
 
 
-# ---- sharing with forensic / judge accounts (read-only, per-case, no expiry yet) -----------------
+# ---- sharing with forensic / judge / prosecutor / defence accounts (per case, optionally time-limited) ----
 ShareGranter = Depends(require_role("officer", "admin"))
 
 
@@ -179,13 +265,18 @@ def share(case_id: int, body: ShareIn, request: Request, db: DbSession, user: Us
         case_district = db.execute(select(Station.district_id).where(Station.id == case.station_id)).scalar_one_or_none()
         if case_district is not None and target.district_id != case_district:
             raise HTTPException(400, f"{target.username}'s forensic lab is not in this case's district")
-    if any(s.shared_with_id == target.id for s in case.shares):
-        raise HTTPException(409, f"{target.username} already has access to this case")
-    case.shares.append(CaseShare(shared_with_id=target.id, shared_by=user.id))
+    expires = utcnow_plus(body.days * 24 * 60) if body.days else None
+    existing = next((s for s in case.shares if s.shared_with_id == target.id), None)
+    if existing is not None:
+        if not (existing.expires_at and existing.expires_at <= utcnow()):
+            raise HTTPException(409, f"{target.username} already has access to this case")
+        existing.expires_at, existing.shared_by, existing.created_at = expires, user.id, utcnow()  # renew an expired share
+    else:
+        case.shares.append(CaseShare(shared_with_id=target.id, shared_by=user.id, expires_at=expires))
     db.flush()
     audit.append(db, action="CASE_SHARED", user=user, resource_type="case", resource_id=case.id,
                  case_number=case.case_number, ip=client_ip(request),
-                 detail={"shared_with": target.username, "role": target.role})
+                 detail={"shared_with": target.username, "role": target.role, "expires_at": expires})
     db.commit()
     return case_out(db, user, case)
 

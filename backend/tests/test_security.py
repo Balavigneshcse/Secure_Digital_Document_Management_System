@@ -228,8 +228,9 @@ def test_clean_files_pass_and_infected_files_are_rejected_and_audited(world, cla
         assert db.scalar(select(func.count(Document.id))) == 1           # only the clean one exists
     # a new version is scanned too
     doc_id = 1
-    r = world.client.post(f"/api/documents/{doc_id}/versions", headers=world.h("officer1"), files={"file": ("v2.txt", EICAR, "text/plain")})
-    assert r.status_code == 422
+    r = world.client.post(f"/api/documents/{doc_id}/versions", headers=world.h("officer1"), data={"change_note": "second version"},
+                          files={"file": ("v2.txt", EICAR, "text/plain")})
+    assert r.status_code == 422 and "malware" in r.json()["detail"]
 
 
 def test_unreachable_scanner_fails_open_or_closed_as_configured(world):

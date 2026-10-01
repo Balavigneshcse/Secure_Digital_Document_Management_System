@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, fmtTime, type Party } from "../api";
+import { api, fmtTime, STAGE_LABEL, type Party } from "../api";
 import { useAuth } from "../auth";
 import { Badge, Loading, Msg, useAction, useLoad } from "../ui";
 
@@ -80,8 +80,10 @@ export default function CasesPage() {
   const canCreate = user?.role === "officer" || isAdmin;
   const description = isAdmin
     ? "All cases in your station (metadata only — document content is restricted to assigned officers)"
-    : user?.role === "forensic" || user?.role === "judge"
-      ? "Cases shared with you for review"
+    : user?.role === "judge" && (user.rank === "district_court" || user.rank === "high_court")
+      ? (user.rank === "high_court" ? "Every case in every district" : "Every case in your district, and cases shared with you")
+    : user && ["forensic", "judge", "prosecutor", "defence"].includes(user.role)
+      ? "Cases shared with you"
       : user?.rank === "superintendent" ? "Cases assigned to you, and every case at the stations you oversee"
       : user?.rank === "station_head" ? "Cases assigned to you, and every case at your station"
       : "Cases assigned to you";
@@ -103,7 +105,7 @@ export default function CasesPage() {
         {data && data.length === 0 && <div className="muted">No cases yet.</div>}
         {data && data.length > 0 && (
           <table>
-            <thead><tr><th>Case no.</th><th>Title</th><th>FIR</th><th>Type</th><th>Assigned</th><th>Docs</th><th>Registered</th></tr></thead>
+            <thead><tr><th>Case no.</th><th>Title</th><th>FIR</th><th>Type</th><th>Stage</th><th>Assigned</th><th>Docs</th><th>Registered</th></tr></thead>
             <tbody>
               {data.map((c) => (
                 <tr key={c.id} className="clickable" onClick={() => nav(`/cases/${c.id}`)}>
@@ -111,6 +113,7 @@ export default function CasesPage() {
                   <td>{c.title}</td>
                   <td>{c.fir_number ?? "—"}</td>
                   <td>{c.case_type ?? "—"}</td>
+                  <td><Badge kind={c.status === "open" ? "ok" : undefined}>{STAGE_LABEL[c.stage] ?? c.stage}</Badge></td>
                   <td>{c.assignees.map((a) => a.username).join(", ") || <Badge kind="warn">unassigned</Badge>}</td>
                   <td>{c.document_count ?? "—"}</td>
                   <td>{fmtTime(c.created_at)}</td>

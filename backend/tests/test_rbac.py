@@ -102,8 +102,10 @@ def test_admin_creates_officer_who_must_change_password(world):
     assert r.status_code == 201 and r.json()["must_change_password"] is True and r.json()["role"] == "officer"
     assert world.client.post("/api/users", headers=ha, json={"username": "new.officer", "full_name": "Dup", "password": "Temp0rary-Pass"}).status_code == 409
     assert world.client.post("/api/users", headers=ha, json={"username": "weak.one", "full_name": "W", "password": "abc"}).status_code == 400
-    # role escalation attempt is rejected by validation
-    assert world.client.post("/api/users", headers=ha, json={"username": "sneaky", "full_name": "S", "password": "Temp0rary-Pass", "role": "auditor"}).status_code == 422
+    # role escalation attempt is refused: only a system administrator creates accounts other than plain officers
+    assert world.client.post("/api/users", headers=ha, json={"username": "sneaky", "full_name": "S", "password": "Temp0rary-Pass", "role": "auditor"}).status_code == 403
+    assert world.client.post("/api/users", headers=ha, json={"username": "sneaky", "full_name": "S", "password": "Temp0rary-Pass", "rank": "station_head"}).status_code == 403
+    assert world.client.post("/api/users", headers=ha, json={"username": "sneaky", "full_name": "S", "password": "Temp0rary-Pass", "role": "root"}).status_code == 422
 
 
 def test_admin_reset_mfa_forces_reenrolment(world):

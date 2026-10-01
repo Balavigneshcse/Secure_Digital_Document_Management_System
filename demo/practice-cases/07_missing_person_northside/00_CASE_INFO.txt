@@ -1,0 +1,25 @@
+CASE 07 - Missing person, minor
+======================================================================
+
+LOGIN AS: officer3.demo   (password Demo@Pass1234 + QR code in ../qr-codes/)
+Station : Northside Police Station (Demo)
+
+--------------------------------------------------------------------
+FORM FIELDS FOR "+ New case"  (copy-paste each line into its field)
+--------------------------------------------------------------------
+Title       : Missing person, minor
+FIR number  : 0177/2026
+Type        : missing person
+Description : A 14-year-old boy did not return home after school on 17/09/2026 and has not been traced since; the family suspects he may have been lured away.
+
+Parties (click "+ Add party" once per row below):
+  - Name: Ganesan Murthy   |  Role: complainant
+  - Name: Vignesh Ganesan   |  Role: victim
+
+--------------------------------------------------------------------
+DOCUMENTS TO UPLOAD (in this folder, upload in this order)
+--------------------------------------------------------------------
+  1. 1_FIR.txt  ->  should classify as: fir
+  2. 2_arrest_warrant.txt  ->  should classify as: arrest_warrant
+
+Leave "Document type" on Auto-detect (AI) each time, so the judges see the AI classify it live.

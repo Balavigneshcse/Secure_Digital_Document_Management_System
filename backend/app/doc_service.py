@@ -33,6 +33,18 @@ ALLOWED: dict[str, tuple[str, tuple[bytes, ...] | None]] = {
     ".tiff": ("image/tiff", (b"II*\x00", b"MM\x00*")),
     ".docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", (b"PK\x03\x04",)),
 }
+# Audio/video evidence (CCTV, recorded statements): stored, hashed, anchored and verified like everything else, with
+# a larger size limit; the AI does not analyse it. extension -> (content type, content check)
+MEDIA: dict[str, tuple[str, object]] = {
+    ".mp4": ("video/mp4", lambda d: d[4:8] == b"ftyp"),
+    ".mov": ("video/quicktime", lambda d: d[4:8] in (b"ftyp", b"moov", b"wide", b"mdat")),
+    ".m4a": ("audio/mp4", lambda d: d[4:8] == b"ftyp"),
+    ".webm": ("video/webm", lambda d: d.startswith(b"\x1a\x45\xdf\xa3")),
+    ".mkv": ("video/x-matroska", lambda d: d.startswith(b"\x1a\x45\xdf\xa3")),
+    ".avi": ("video/x-msvideo", lambda d: d.startswith(b"RIFF") and d[8:12] == b"AVI "),
+    ".wav": ("audio/wav", lambda d: d.startswith(b"RIFF") and d[8:12] == b"WAVE"),
+    ".mp3": ("audio/mpeg", lambda d: d.startswith(b"ID3") or (len(d) > 1 and d[0] == 0xFF and d[1] & 0xE0 == 0xE0)),
+}
 MAX_OCR_CHARS = 500_000
 MAX_DOCX_UNCOMPRESSED = 100 * 1024 * 1024  # a ZIP can inflate ~1000:1; real DOCX files are near their upload size
 MAX_DOCX_ENTRIES = 5000
@@ -58,11 +70,23 @@ def safe_filename(name: str) -> str:
     return base[:200] or "document"
 
 
+def is_media(filename: str | None) -> bool:
+    return os.path.splitext(safe_filename(filename or ""))[1].lower() in MEDIA
+
+
 def validate_upload(filename: str, data: bytes) -> tuple[str, str]:
     name = safe_filename(filename)
     ext = os.path.splitext(name)[1].lower()
+    if ext in MEDIA:
+        if not data:
+            raise HTTPException(400, "File is empty")
+        ctype, check = MEDIA[ext]
+        if not check(data[:16]):
+            raise HTTPException(415, "File content does not match its extension")
+        return name, ctype
     if ext not in ALLOWED:
-        raise HTTPException(415, f"File type '{ext or 'unknown'}' is not allowed. Allowed: {', '.join(sorted(ALLOWED))}")
+        allowed = ", ".join(sorted(set(ALLOWED) | set(MEDIA)))
+        raise HTTPException(415, f"File type '{ext or 'unknown'}' is not allowed. Allowed: {allowed}")
     if not data:
         raise HTTPException(400, "File is empty")
     ctype, magics = ALLOWED[ext]
@@ -75,10 +99,10 @@ def validate_upload(filename: str, data: bytes) -> tuple[str, str]:
     return name, ctype
 
 
-def read_upload(upload: UploadFile, max_bytes: int) -> bytes:
+def read_upload(upload: UploadFile, max_bytes: int, kind: str = "File") -> bytes:
     data = upload.file.read(max_bytes + 1)
     if len(data) > max_bytes:
-        raise HTTPException(413, f"File exceeds the {max_bytes // (1024 * 1024)} MB limit")
+        raise HTTPException(413, f"{kind} exceeds the {max_bytes // (1024 * 1024)} MB limit")
     return data
 
 
@@ -108,6 +132,8 @@ def _antivirus(state, db: Session, user: User, case: Case, filename: str, data: 
 
 def _run_ai(ai, filename: str, ctype: str, data: bytes) -> tuple[AIResult, str]:
     """AI is best-effort: an unavailable service must never block filing a document."""
+    if ctype.startswith(("audio/", "video/")):
+        return AIResult(doc_type="evidence_record", ocr_method="not applicable"), "not analysed (audio/video)"
     try:
         res = ai.process(filename, ctype, data)
         return res, res.engine or ai.name
@@ -118,7 +144,9 @@ def _run_ai(ai, filename: str, ctype: str, data: bytes) -> tuple[AIResult, str]:
 def store_version(
     state, db: Session, user: User, case: Case, doc: Document, upload: UploadFile, change_note: str | None
 ) -> DocumentVersion:
-    data = read_upload(upload, state.settings.max_upload_mb * 1024 * 1024)
+    media = is_media(upload.filename)
+    limit = (state.settings.max_media_upload_mb if media else state.settings.max_upload_mb) * 1024 * 1024
+    data = read_upload(upload, limit, "Audio/video file" if media else "File")
     filename, ctype = validate_upload(upload.filename or "", data)
     _antivirus(state, db, user, case, filename, data)
     ai, provider = _run_ai(state.ai, filename, ctype, data)
@@ -258,6 +286,9 @@ def document_out(state, doc: Document) -> dict:
     return {
         "id": doc.id, "uid": doc.uid, "case_id": doc.case_id, "case_number": doc.case.case_number, "title": doc.title,
         "doc_type": doc.doc_type, "description": doc.description, "created_at": doc.created_at,
+        "created_by": doc.creator.username, "created_by_role": doc.creator.role, "case_status": doc.case.status,
+        "approval_status": doc.approval_status, "approval_by": doc.approver.username if doc.approver else None,
+        "approval_at": doc.approved_at, "approval_note": doc.approval_note, "approved_version": doc.approved_version,
         "current_version": doc.current_version,
         "versions": [_version_dict(v, contents.get(docstore.meta_key(doc.id, v.version_no))) for v in doc.versions],
     }

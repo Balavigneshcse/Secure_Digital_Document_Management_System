@@ -1,0 +1,25 @@
+CASE 09 - Narcotics seizure, T. Nagar
+======================================================================
+
+LOGIN AS: officer.chn1.demo   (password Demo@Pass1234 + QR code in ../qr-codes/)
+Station : Chennai Central Police Station
+
+--------------------------------------------------------------------
+FORM FIELDS FOR "+ New case"  (copy-paste each line into its field)
+--------------------------------------------------------------------
+Title       : Narcotics seizure, T. Nagar
+FIR number  : 1305/2026
+Type        : narcotics
+Description : A police patrol intercepted a two-wheeler in T. Nagar and recovered a quantity of suspected synthetic narcotics concealed in the seat compartment.
+
+Parties (click "+ Add party" once per row below):
+  - Name: Inspector Gowtham   |  Role: complainant
+  - Name: Arivazhagan M   |  Role: accused
+
+--------------------------------------------------------------------
+DOCUMENTS TO UPLOAD (in this folder, upload in this order)
+--------------------------------------------------------------------
+  1. 1_FIR.txt  ->  should classify as: fir
+  2. 2_forensic_report.txt  ->  should classify as: forensic_report
+
+Leave "Document type" on Auto-detect (AI) each time, so the judges see the AI classify it live.

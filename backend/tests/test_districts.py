@@ -82,8 +82,8 @@ def test_forensic_cannot_add_a_version_to_someone_elses_document(world):
     world.client.post(f"/api/cases/{case['id']}/shares", headers=world.h("officer1"), json={"user_id": world._uid("krr_lab")})
     officer_doc = world.upload(case["id"], "officer1")
     r = world.client.post(f"/api/documents/{officer_doc['id']}/versions", headers=world.h("krr_lab"),
-                          files={"file": ("x.txt", b"x", "text/plain")})
-    assert r.status_code == 403  # upload_version stays officer-only, even for the lab's own case access
+                          data={"change_note": "lab edit"}, files={"file": ("x.txt", b"x", "text/plain")})
+    assert r.status_code == 404  # the lab may version its own uploads only; the officer's document doesn't exist for it
 
 
 def test_sharing_a_case_with_an_out_of_district_forensic_lab_is_rejected(world):

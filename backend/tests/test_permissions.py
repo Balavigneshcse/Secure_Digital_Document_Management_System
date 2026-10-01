@@ -120,8 +120,8 @@ def test_forensic_and_judge_see_nothing_until_shared_then_exactly_that_case(worl
     assert world.client.get(f"/api/documents/{lab_doc['id']}", headers=world.h("officer1")).status_code == 200
 
     # still no versioning anyone else's doc, no case creation, no AI-trigger actions
-    assert world.client.post(f"/api/documents/{d['id']}/versions", headers=world.h("forensic1"),
-                             files={"file": ("g.txt", b"x", "text/plain")}).status_code == 403
+    assert world.client.post(f"/api/documents/{d['id']}/versions", headers=world.h("forensic1"), data={"change_note": "lab edit"},
+                             files={"file": ("g.txt", b"x", "text/plain")}).status_code == 404
     assert world.client.post("/api/cases", headers=world.h("forensic1"),
                              json={"title": "x", "parties": []}).status_code == 403
     assert world.client.post(f"/api/documents/{lab_doc['id']}/versions/{lv}/summary", headers=world.h("forensic1")).status_code == 403

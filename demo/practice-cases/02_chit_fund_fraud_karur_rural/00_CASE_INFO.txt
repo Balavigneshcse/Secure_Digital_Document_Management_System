@@ -1,0 +1,25 @@
+CASE 02 - Chit fund fraud, Pugalur
+======================================================================
+
+LOGIN AS: officer.krr2.demo   (password Demo@Pass1234 + QR code in ../qr-codes/)
+Station : Karur Rural Police Station
+
+--------------------------------------------------------------------
+FORM FIELDS FOR "+ New case"  (copy-paste each line into its field)
+--------------------------------------------------------------------
+Title       : Chit fund fraud, Pugalur
+FIR number  : 0455/2026
+Type        : cheating
+Description : The organiser of a private chit fund in Pugalur collected monthly instalments from 34 members for eight months and then stopped conducting the chit and switched off his phone.
+
+Parties (click "+ Add party" once per row below):
+  - Name: Manikandan T   |  Role: complainant
+  - Name: Kalpana R   |  Role: witness
+
+--------------------------------------------------------------------
+DOCUMENTS TO UPLOAD (in this folder, upload in this order)
+--------------------------------------------------------------------
+  1. 1_FIR.txt  ->  should classify as: fir
+  2. 2_evidence_seizure_memo.txt  ->  should classify as: evidence_record
+
+Leave "Document type" on Auto-detect (AI) each time, so the judges see the AI classify it live.

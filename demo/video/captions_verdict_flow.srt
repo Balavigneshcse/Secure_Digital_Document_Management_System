@@ -1,0 +1,107 @@
+1
+00:00:00,000 --> 00:00:08,256
+1. Police officer signs in with password + one-time code
+
+2
+00:00:08,406 --> 00:00:10,069
+The officer sees only the cases assigned to him
+
+3
+00:00:10,219 --> 00:00:28,444
+He registers a new case: Chain snatching, Kovai Road, Karur
+
+4
+00:00:28,594 --> 00:00:36,694
+He files the FIR: it is hashed, encrypted and read by the local AI
+
+5
+00:00:36,844 --> 00:00:39,210
+The AI recognises a FIR (100%) and extracts people, sections and amount
+
+6
+00:00:39,360 --> 00:00:44,272
+Verify integrity: the file matches the hash anchored on Hyperledger Fabric
+
+7
+00:00:44,422 --> 00:00:53,866
+He also files the witness statement
+
+8
+00:00:54,016 --> 00:00:58,069
+The case is shared with the district forensic lab (this case only)
+
+9
+00:00:58,219 --> 00:01:06,225
+2. Forensic lab signs in
+
+10
+00:01:06,375 --> 00:01:12,225
+It opens the shared case: the FIR and statement are NOT listed
+
+11
+00:01:12,375 --> 00:01:20,303
+It can still file its own evidence: the forensic report
+
+12
+00:01:20,453 --> 00:01:23,850
+Opening the officer's FIR directly returns Not found (access control)
+
+13
+00:01:24,000 --> 00:01:27,850
+Forensic sees only what it uploaded itself
+
+14
+00:01:28,000 --> 00:01:39,491
+3. Officer signs in again
+
+15
+00:01:39,641 --> 00:01:46,975
+Police now see the FIR, the statement and the forensic upload
+
+16
+00:01:47,125 --> 00:01:54,928
+4. District court judge signs in
+
+17
+00:01:55,078 --> 00:02:01,897
+The case is already visible: judges of a district see all its cases
+
+18
+00:02:02,047 --> 00:02:06,475
+The judge reviews all documents and details
+
+19
+00:02:06,625 --> 00:02:27,335
+The judge records the verdict: Convicted, with sentence and reasons
+
+20
+00:02:27,485 --> 00:02:32,881
+The judgment is filed like any evidence: hashed, encrypted, anchored on the ledger
+
+21
+00:02:33,031 --> 00:02:37,350
+The case is now closed; the verdict cannot be edited
+
+22
+00:02:37,500 --> 00:02:56,585
+5. Now an attacker with database access alters the stored FIR
+
+23
+00:02:56,735 --> 00:03:02,146
+Verify integrity now FAILS: the hash no longer matches the ledger
+
+24
+00:03:02,296 --> 00:03:12,350
+6. The auditor (supervisor) reviews the audit trail
+
+25
+00:03:12,500 --> 00:03:17,350
+Every action on this case is logged: uploads, verdict, and TAMPER_DETECTED with who and when
+
+26
+00:03:17,500 --> 00:03:20,881
+The audit log itself is hash-chained: it verifies as intact
+
+27
+00:03:21,031 --> 00:03:27,584
+The auditor independently re-checks the FIR: tampering detected, no content shown

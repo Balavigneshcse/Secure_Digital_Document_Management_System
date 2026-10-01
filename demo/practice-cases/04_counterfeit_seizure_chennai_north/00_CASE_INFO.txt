@@ -1,0 +1,25 @@
+CASE 04 - Counterfeit electronics seizure, Ritchie Street
+======================================================================
+
+LOGIN AS: officer.chn2.demo   (password Demo@Pass1234 + QR code in ../qr-codes/)
+Station : Chennai North Police Station
+
+--------------------------------------------------------------------
+FORM FIELDS FOR "+ New case"  (copy-paste each line into its field)
+--------------------------------------------------------------------
+Title       : Counterfeit electronics seizure, Ritchie Street
+FIR number  : 0933/2026
+Type        : counterfeit goods
+Description : A raid on a wholesale shop on Ritchie Street recovered a large quantity of counterfeit branded earphones and chargers being sold as genuine.
+
+Parties (click "+ Add party" once per row below):
+  - Name: Inspector Raghavan   |  Role: complainant
+  - Name: Suresh Babu   |  Role: accused
+
+--------------------------------------------------------------------
+DOCUMENTS TO UPLOAD (in this folder, upload in this order)
+--------------------------------------------------------------------
+  1. 1_FIR.txt  ->  should classify as: fir
+  2. 2_forensic_report.txt  ->  should classify as: forensic_report
+
+Leave "Document type" on Auto-detect (AI) each time, so the judges see the AI classify it live.

@@ -1,0 +1,25 @@
+CASE 08 - Assault over property boundary dispute
+======================================================================
+
+LOGIN AS: officer.krr1.demo   (password Demo@Pass1234 + QR code in ../qr-codes/)
+Station : Karur Town Police Station
+
+--------------------------------------------------------------------
+FORM FIELDS FOR "+ New case"  (copy-paste each line into its field)
+--------------------------------------------------------------------
+Title       : Assault over property boundary dispute
+FIR number  : 0742/2026
+Type        : assault
+Description : A long-running boundary dispute between two neighbouring families led to a physical altercation in which one party sustained injuries; the accused has applied for bail.
+
+Parties (click "+ Add party" once per row below):
+  - Name: Palani Andi   |  Role: complainant
+  - Name: Karthikeyan Velu   |  Role: accused
+
+--------------------------------------------------------------------
+DOCUMENTS TO UPLOAD (in this folder, upload in this order)
+--------------------------------------------------------------------
+  1. 1_FIR.txt  ->  should classify as: fir
+  2. 2_court_filing.txt  ->  should classify as: court_filing
+
+Leave "Document type" on Auto-detect (AI) each time, so the judges see the AI classify it live.

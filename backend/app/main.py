@@ -13,11 +13,11 @@ from .ai.http_client import HttpAI
 from .ai.stub import StubAI
 from .antivirus import ClamAV
 from .config import Settings
-from .db import Base, advisory_xact_lock, make_engine, make_session_factory
+from .db import Base, advisory_xact_lock, ensure_columns, make_engine, make_session_factory
 from .ledger import MemoryLedger
 from .mongo import Mongo
 from .netutil import UnknownUserLockout
-from .routers import audit_api, auth, cases, documents, ledger_api, search, users
+from .routers import audit_api, auth, cases, dashboard, documents, evidence, ledger_api, search, users
 from .models import SystemMeta
 from .seed import seed_demo
 from .storage import GridFSStorage
@@ -84,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     engine = make_engine(settings.database_url)
     Base.metadata.create_all(engine)
+    ensure_columns(engine)
     session_factory = make_session_factory(engine)
     mongo = Mongo(settings.mongo_url, settings.mongo_db)
     mongo.ensure_indexes()
@@ -126,7 +127,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             resp.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
         return resp
 
-    for r in (auth.router, users.router, cases.router, documents.router, search.router, audit_api.router, ledger_api.router):
+    for r in (auth.router, users.router, cases.router, documents.router, evidence.router, dashboard.router, search.router,
+              audit_api.router, ledger_api.router):
         app.include_router(r)
 
     @app.get("/api/health", tags=["meta"])
