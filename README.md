@@ -9,33 +9,30 @@ investigation documents. It runs on one machine with **no cloud account and no e
 * **A local AI service** — OCR (Tesseract), a fine-tuned document classifier, multilingual embeddings, and an Ollama LLM for summaries — see [ai/README.md](ai/README.md)
 * **nginx** — TLS 1.3 front door; React + TypeScript UI; FastAPI backend
 
-Read [Limitations](#limitations-read-before-relying-on-this) and [what is not built](#not-built) before quoting any claim
-about this project.
-
 ### Contents
 
 [What works](#what-works) · [Architecture](#architecture) · [Getting the code](#getting-the-code) · [Run it](#run-it) ·
 [Demo accounts](#demo-accounts) · [Try the integrity claim](#try-the-integrity-claim-yourself) ·
 [Case workflow](#case-workflow-stages-approval-verdict-reopening) · [Evidence tools](#evidence-tools-viewer-custody-certificate-signatures) ·
 [Who can do what](#who-can-do-what) · [API](#api) · [Configuration](#configuration) · [Tests](#tests) ·
-[Limitations](#limitations-read-before-relying-on-this) · [Not built](#not-built) · [Layout](#layout)
+[Layout](#layout)
 
 ## What works
 
-| Capability | Status | Notes |
-|---|---|---|
-| Auth, RBAC, mandatory TOTP MFA | ✅ | officer (plain / station head / superintendent), station admin, system administrator, auditor, forensic lab, judge (shared / district / high court), public prosecutor, defence lawyer; lockout, forced first-login password change, TOTP replay protection, sessions revoked on logout / disable / password change, per-IP rate limiting, 8 h absolute session cap with sliding refresh; admin-issued one-time password for a forgotten password |
-| Case-tagged upload, versioning, editing | ✅ | PDF, TXT, PNG, JPG, TIFF, DOCX (25 MB) and audio/video evidence — MP4, MOV, WEBM, MKV, AVI, MP3, WAV, M4A (200 MB); extension **and** magic bytes checked; every new version is a new anchored record; every edit recorded with old/new values, editor, time and reason |
-| Case workflow | ✅ | stages (under investigation → charge-sheeted → in trial → judgment delivered), station-head approval of FIRs and charge sheets before the court side sees them, the judge's verdict closes the case, a court-rank judge can reopen it; time-limited sharing |
-| Evidence tools | ✅ | in-browser viewer (text, PDF, images, audio/video; DOCX/TIFF as extracted text), chain of custody per document, printable Section 63 BSA (ex-65B) certificate, Ed25519 digital signatures with ledger-anchored public keys |
-| Dashboard and alerts | ✅ | role-aware home page; tampering and malware detections alert the officers, judges and admins responsible for that case (in-app, with unread count) |
-| Encryption at rest | ✅ | AES-256-GCM, per-file key wrapped by a master key; OCR text, entities and summaries are sealed too |
-| Integrity proof on Hyperledger Fabric | ✅ | SHA-256 + metadata anchored per version; verify re-hashes the decrypted file and checks the Fabric record; block hashes and links re-verified independently |
-| Tamper-evident audit log | ✅ | hash chain in PostgreSQL, head anchored on Fabric every 5 min and on demand |
-| Search | ✅ | filters + whole-word search over **encrypted** OCR text (blind index) + semantic search (embeddings), always limited to the caller's cases |
-| Local AI | ✅ / ⚠️ | OCR incl. Hindi/Tamil packs, entity extraction, fine-tuned classifier (round 2, 81–99 % on held-out sets), summaries with a grounding guard. **Never evaluated on a real police document** — numbers in [ai/README.md](ai/README.md#how-good-is-the-classifier) |
-| One-command deployment | ✅ | `docker compose up -d --build` → `https://localhost:8443` (TLS 1.3 only). Built and run end-to-end on Windows / Docker Desktop |
-| Optional antivirus on upload | ⚠️ | ClamAV hook exists; tested against a fake `clamd` only — never a real ClamAV |
+| Capability | Notes |
+|---|---|
+| Auth, RBAC, mandatory TOTP MFA | officer (plain / station head / superintendent), station admin, system administrator, auditor, forensic lab, judge (shared / district / high court), public prosecutor, defence lawyer; lockout, forced first-login password change, TOTP replay protection, sessions revoked on logout / disable / password change, per-IP rate limiting, 8 h absolute session cap with sliding refresh; admin-issued one-time password for a forgotten password |
+| Case-tagged upload, versioning, editing | PDF, TXT, PNG, JPG, TIFF, DOCX (25 MB) and audio/video evidence — MP4, MOV, WEBM, MKV, AVI, MP3, WAV, M4A (200 MB); extension **and** magic bytes checked; every new version is a new anchored record; every edit recorded with old/new values, editor, time and reason |
+| Case workflow | stages (under investigation → charge-sheeted → in trial → judgment delivered), station-head approval of FIRs and charge sheets before the court side sees them, the judge's verdict closes the case, a court-rank judge can reopen it; time-limited sharing |
+| Evidence tools | in-browser viewer (text, PDF, images, audio/video; DOCX/TIFF as extracted text), chain of custody per document, printable Section 63 BSA (ex-65B) certificate, Ed25519 digital signatures with ledger-anchored public keys |
+| Dashboard and alerts | role-aware home page; tampering and malware detections alert the officers, judges and admins responsible for that case (in-app, with unread count) |
+| Encryption at rest | AES-256-GCM, per-file key wrapped by a master key; OCR text, entities and summaries are sealed too |
+| Integrity proof on Hyperledger Fabric | SHA-256 + metadata anchored per version; verify re-hashes the decrypted file and checks the Fabric record; block hashes and links re-verified independently |
+| Tamper-evident audit log | hash chain in PostgreSQL, head anchored on Fabric every 5 min and on demand |
+| Search | filters + whole-word search over **encrypted** OCR text (blind index) + semantic search (embeddings), always limited to the caller's cases |
+| Local AI | OCR incl. Hindi/Tamil packs, entity extraction, fine-tuned classifier (round 2, 81–99 % on held-out sets), summaries with a grounding guard. **Never evaluated on a real police document** — numbers in [ai/README.md](ai/README.md#how-good-is-the-classifier) |
+| One-command deployment | `docker compose up -d --build` → `https://localhost:8443` (TLS 1.3 only). Built and run end-to-end on Windows / Docker Desktop |
+| Optional antivirus on upload | ClamAV hook exists; tested against a fake `clamd` only — never a real ClamAV |
 
 **Verified how:** the automated test-suite (below) and a scripted run against the Docker stack through the TLS front door:
 enrol MFA → create case → upload a scanned PDF → OCR / entities / classification → anchored on Fabric (block number and tx id
@@ -304,7 +301,7 @@ bar. They are in-app only (the system is designed to run without internet: no e-
 
 | | Officer | Station head | Superintendent | Station admin | Auditor | Forensic lab | Judge (plain / district / high court) |
 |---|---|---|---|---|---|---|---|
-| Register a case | ✅ (auto-assigned) | ✅ | ✅ | ✅ (assigns officers) | — | — | — |
+| Register a case | Yes (auto-assigned) | Yes | Yes | Yes (assigns officers) | — | — | — |
 | See a case | assigned | + own station | + overseen stations | own station (metadata only) | — | only cases shared with them | shared / + own district / + everywhere |
 | List a case's documents | assigned cases | + own station | + overseen stations | **never** | **never** | shared cases, **own uploads only** | same scope as "See a case", **full list** |
 | Open / download / verify a document | assigned cases | + own station | + overseen stations | **never** | pass/fail only, any document | shared cases, **own uploads only** | same scope, **every document** |
@@ -318,8 +315,8 @@ bar. They are in-app only (the system is designed to run without internet: no e-
 | Sign a document version | documents filed by officers | ″ | ″ | — | — | its own uploads | the verdict they recorded |
 | Chain of custody, Section 63 certificate | same scope as reading | ″ | ″ | — | — | — | same scope as reading |
 | Assign/unassign officers; set an officer's rank; manage officer accounts; reset officer MFA | — | — | — | own station | — | — | — |
-| Grant/revoke a case share (forensic / judge / prosecutor / defence; optionally time-limited) | on cases they can see content of | ″ | ″ | ✅ (any case at their station, no content access needed) | — | — | — |
-| Audit log, ledger explorer, export | — | — | — | — | ✅ | — | — |
+| Grant/revoke a case share (forensic / judge / prosecutor / defence; optionally time-limited) | on cases they can see content of | ″ | ″ | Yes (any case at their station, no content access needed) | — | — | — |
+| Audit log, ledger explorer, export | — | — | — | — | Yes | — | — |
 
 "Station head"/"superintendent" (officer) and "district_court"/"high_court" (judge) are **ranks**, not separate roles
 (`PATCH /api/users/{id}` for the two officer ranks; the CLI's `--rank` for every other combination). A superintendent's
@@ -409,58 +406,6 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS rank VARCHAR(16) NOT NULL DEFAULT 'of
 ALTER TABLE stations ADD COLUMN IF NOT EXISTS district_id INTEGER REFERENCES districts(id);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS district_id INTEGER REFERENCES districts(id);
 ```
-
-## Limitations (read before relying on this)
-
-* **The Fabric network is a single-host demo of the mechanism.** Both "organisations" and the one Raft orderer run on your
-  machine under one operator, with `cryptogen`-issued keys in a Docker volume. It proves *how* anchoring, endorsement and
-  verification work; it does not give the independence a real police-court deployment would (separate operators, ≥3 orderers,
-  a real CA, HSM-held keys).
-* **Key custody:** the master key comes from configuration or a file next to the data. Anyone who owns the host can decrypt.
-  There is no KMS/HSM integration.
-* **Not everything is encrypted.** Document files, OCR text, entities and summaries are. Case titles, party names, FIR numbers,
-  filenames and audit details sit in PostgreSQL in clear (so they are filterable), and embeddings sit in MongoDB in clear (they
-  reveal topic, not text). Use disk / database encryption as well.
-* **Blind-index search** matches whole words only (no substring or fuzzy matching) and, like any searchable encryption, leaks
-  which stored documents share a word.
-* **PostgreSQL, MongoDB and Fabric are not one transaction.** Failures are rolled back by compensation, but killing the process at
-  the wrong instant can leave an unreachable blob or a ledger entry with no database row. They are harmless, but not cleaned up.
-* **Edits:** the version diff compares the *extracted text* of two versions, so for a scan it is only as good as the OCR,
-  and it shows nothing for an image with no readable text (the SHA-256 hashes still show that the file changed).
-* **Shares expire only if given an end date** (the UI suggests 30 days; "until removed" is still allowed). Rank changes and
-  share grants aren't rate-limited or capped, so a compromised admin/officer account could over-share.
-* **Signatures use server-held keys.** Each user's Ed25519 private key is sealed with the master key on the server and
-  unlocked by their session plus password - not a personal DSC token, smart card or Aadhaar eSign, and not CCA-licensed PKI.
-  Whoever holds the master key could sign as anyone; the ledger-anchored public key detects a *swapped* key, not that.
-* **The Section 63 certificate is a template filled from the system's records**, not legal advice; it takes effect only when
-  signed by the persons it names, and the exact form a court accepts should be checked with a legal officer.
-* **Approval applies only at stations with a station-head account**, and only to FIRs and charge sheets filed by plain officers.
-* **Audio/video** is stored, hashed, anchored and verified, but not analysed (no transcription); an optional ClamAV with its
-  default stream limit will not scan files above ~25 MB.
-* **Alerts are in-app only** — nobody is e-mailed or paged; someone has to sign in to see them.
-* **Rate limiting is per backend process** (in memory). Several replicas would each count separately; put a shared limiter in front.
-* **Client IPs on Docker Desktop** (Windows/macOS): Docker's port forwarding hides the real source address, so every
-  local browser reaches nginx as the Docker network gateway and shares one IP in the audit log and the login rate limit.
-  On a Linux host serving a LAN (publish the port on the LAN interface instead of `127.0.0.1`), nginx sees each client's
-  real address and each client is tracked separately.
-* **TLS uses a self-signed certificate** (browser warning). Mount your organisation's certificate for real use.
-* **Antivirus** is off unless you run ClamAV, and that path has only been tested against a stand-in `clamd`.
-* **Sessions** live in `sessionStorage` (mitigated by a strict CSP, but a script injection would still read them).
-* **AI quality is limited** — see [ai/README.md](ai/README.md): the classifier (round 2) was fine-tuned on synthetic
-  templates plus LLM-written documents and scores 81–99 % on the four held-out test sets we have (one of them, the
-  LLM-written set, partly reflects style-familiarity with the same generator rather than pure generalisation — see the
-  caveat in ai/README.md); it has **never been evaluated on a real police document**. The LLM is used as published (only
-  its prompt is customised) and can still write an unverifiable soft claim; Hindi/Tamil OCR is untested on real scans;
-  handwriting is not supported. Summaries are labelled as AI-written and on demand.
-* **Not certified** against Section 63 BSA / 65B Evidence Act practice, the IT Act, the DPDP Act 2023 or CERT-In requirements. Only tested on Windows 11 + Docker Desktop.
-
-## Not built
-
-Items in the solution document that this prototype does **not** implement: PKI / DSC / Aadhaar eSign (signatures are
-Ed25519 with server-held keys, see Limitations) · approval chains with more than one level (there is one: the station head)
-· a visual diff for scans/PDF pages (the version diff compares extracted text only) · a Tamil/Hindi user interface (the
-AI reads both; the screens are English) · transcription of audio/video · e-mail/SMS alerts · Flutter mobile app · Aadhaar
-e-KYC · ELK log analytics · KMS / HSM key custody · MinIO/S3 (GridFS is used instead).
 
 ## Layout
 

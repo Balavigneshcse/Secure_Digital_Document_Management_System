@@ -118,7 +118,7 @@ Every sign-in now lands on a **dashboard**: cases by stage, what is waiting for 
 | **Digital signature** | Document → **Sign this version** → your password. Shows *valid*, the signer, time and key fingerprint. |
 | **Chain of custody** | Bottom of a document page (officer/judge/prosecutor): every filing, view, download, verification, signature and refused attempt. |
 | **Section 63 certificate** | Document → **Section 63 certificate** → **Print / save as PDF**. Refused for a tampered file. |
-| **Alerts** | After the tamper demo, the officer, the district judge and the auditor each see a red **TAMPERING DETECTED** alert and a count on the 🔔. |
+| **Alerts** | After the tamper demo, the officer, the district judge and the auditor each see a red **TAMPERING DETECTED** alert and a count on the alerts bell in the top bar. |
 | **Prosecutor / defence** | Share a case with `prosecutor.krr.demo` / `defence.krr.demo`. The defence sees only the FIR until the case is charge-sheeted, and never the case diary. |
 | **Forgotten password** | `sysadmin.demo` → **Users** → **Reset password**: a one-time password shown once; the user must change it and still needs their authenticator. |
 
